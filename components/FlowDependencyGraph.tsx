@@ -75,9 +75,19 @@ export const FlowDependencyGraph: React.FC<FlowDependencyGraphProps> = ({
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Sync state to refs for fast animation frame access
   selectedNodeRef.current = selectedNode;
   filterQueryRef.current = filterQuery;
+
+  // ESC Key listener for Fullscreen mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
 
   // High performance Canvas Redraw Function
   const renderCanvas = useCallback(() => {
@@ -114,106 +124,76 @@ export const FlowDependencyGraph: React.FC<FlowDependencyGraphProps> = ({
       ctx.save();
       ctx.beginPath();
       ctx.strokeStyle = '#3b82f6';
-      ctx.globalAlpha = 0.55;
-      ctx.lineWidth = 1.8;
-      ctx.setLineDash([5, 5]);
+      ctx.globalAlpha = 0.6;
+      ctx.lineWidth = 2.2;
+      ctx.setLineDash([6, 6]);
       ctx.moveTo(src.x, src.y);
       ctx.lineTo(tgt.x, tgt.y);
       ctx.stroke();
 
-      // Render Arrowhead pointing to target boundary
-      const angle = Math.atan2(tgt.y - src.y, tgt.x - src.x);
-      const targetRadius = tgt.radius || 18;
-      const arrowX = tgt.x - Math.cos(angle) * (targetRadius + 4);
-      const arrowY = tgt.y - Math.sin(angle) * (targetRadius + 4);
-
-      ctx.fillStyle = '#60a5fa';
-      ctx.globalAlpha = 0.85;
-      ctx.beginPath();
-      ctx.moveTo(arrowX, arrowY);
-      ctx.lineTo(
-        arrowX - 8 * Math.cos(angle - Math.PI / 6),
-        arrowY - 8 * Math.sin(angle - Math.PI / 6)
-      );
-      ctx.lineTo(
-        arrowX - 8 * Math.cos(angle + Math.PI / 6),
-        arrowY - 8 * Math.sin(angle + Math.PI / 6)
-      );
-      ctx.closePath();
-      ctx.fill();
-
-      // Render Link Label
+      // Render Edge Label if present
       if (link.label) {
         const midX = (src.x + tgt.x) / 2;
         const midY = (src.y + tgt.y) / 2;
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = 'bold 9px sans-serif';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillStyle = '#60a5fa';
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
         ctx.fillText(link.label, midX, midY - 6);
       }
       ctx.restore();
     });
 
     // 2. Render Nodes
-    currentNodes.forEach(n => {
-      if (n.x == null || n.y == null) return;
+    currentNodes.forEach(node => {
+      if (node.x == null || node.y == null) return;
 
-      const color = getNodeColor(n.status, n.type);
-      const icon = getNodeIcon(n.type);
-      const isSelected = selectedId === n.id;
-      const isMatched = query.length > 0 && (n.label.toLowerCase().includes(query) || n.type.toLowerCase().includes(query));
+      const isSelected = selectedId === node.id;
+      const matchesFilter = !query || node.label.toLowerCase().includes(query) || node.type.toLowerCase().includes(query);
+      const color = getNodeColor(node.status, node.type);
+      const icon = getNodeIcon(node.type);
 
       ctx.save();
+      ctx.globalAlpha = matchesFilter ? 1 : 0.25;
 
-      // Outer Degree Halo
-      const haloRadius = n.radius + Math.min(n.degree * 2, 8);
+      // Outer Halo Ring
       ctx.beginPath();
-      ctx.arc(n.x, n.y, haloRadius, 0, 2 * Math.PI);
+      ctx.arc(node.x, node.y, node.radius + (isSelected ? 10 : 6), 0, 2 * Math.PI);
       ctx.fillStyle = color;
-      ctx.globalAlpha = isSelected ? 0.35 : 0.12;
+      ctx.globalAlpha = matchesFilter ? (isSelected ? 0.35 : 0.18) : 0.05;
+      ctx.fill();
+
+      // Outer Border Glow
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, node.radius + (isSelected ? 10 : 6), 0, 2 * Math.PI);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = isSelected ? 3 : 1.5;
+      ctx.globalAlpha = matchesFilter ? (isSelected ? 1 : 0.6) : 0.1;
+      ctx.stroke();
+
+      // Inner Circle
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
+      ctx.fillStyle = '#0f172a';
+      ctx.globalAlpha = matchesFilter ? 1 : 0.3;
       ctx.fill();
       ctx.strokeStyle = color;
-      ctx.lineWidth = isSelected ? 2 : 1;
-      ctx.globalAlpha = isSelected ? 0.8 : 0.4;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
 
-      // Filter Highlight Pulse Ring
-      if (isMatched) {
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, haloRadius + 6, 0, 2 * Math.PI);
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 2.5;
-        ctx.globalAlpha = 0.95;
-        ctx.stroke();
-      }
-
-      // Main Circle
-      ctx.beginPath();
-      ctx.arc(n.x, n.y, n.radius, 0, 2 * Math.PI);
-      ctx.fillStyle = '#0f172a';
-      ctx.globalAlpha = 1;
-      ctx.fill();
-      ctx.strokeStyle = isSelected ? '#38bdf8' : color;
-      ctx.lineWidth = isSelected ? 3 : 2.5;
-      ctx.stroke();
-
-      // Node Icon
-      ctx.font = '14px sans-serif';
+      // Icon Inside Node
+      ctx.font = '16px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(icon, n.x, n.y);
+      ctx.fillText(icon, node.x, node.y);
 
-      // Label under Node
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillStyle = isSelected ? '#38bdf8' : '#f8fafc';
-      ctx.fillText(n.label, n.x, n.y + n.radius + 14);
-
-      // Type Subtitle
-      ctx.font = 'bold 8px sans-serif';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText(n.type.toUpperCase(), n.x, n.y + n.radius + 25);
+      // Label Below Node
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f8fafc';
+      ctx.shadowColor = '#000000';
+      ctx.shadowBlur = 6;
+      ctx.fillText(node.label, node.x, node.y + node.radius + 16);
 
       ctx.restore();
     });
@@ -229,8 +209,9 @@ export const FlowDependencyGraph: React.FC<FlowDependencyGraphProps> = ({
     const canvas = canvasRef.current;
 
     const updateCanvasDimensions = () => {
-      const width = container.clientWidth || (isFullscreen ? window.innerWidth : 800);
-      const height = container.clientHeight || (isFullscreen ? window.innerHeight : 450);
+      const rect = container.getBoundingClientRect();
+      const width = Math.max(rect.width || (isFullscreen ? window.innerWidth : 800), 300);
+      const height = Math.max(rect.height || (isFullscreen ? window.innerHeight : 500), 300);
       const dpr = window.devicePixelRatio || 1;
 
       canvas.width = width * dpr;
@@ -247,6 +228,11 @@ export const FlowDependencyGraph: React.FC<FlowDependencyGraphProps> = ({
 
     updateCanvasDimensions();
 
+    const observer = new ResizeObserver(() => {
+      updateCanvasDimensions();
+    });
+    observer.observe(container);
+
     // Prepare Degree Map
     const degreeMap: Record<string, number> = {};
     edges.forEach(e => {
@@ -262,7 +248,7 @@ export const FlowDependencyGraph: React.FC<FlowDependencyGraphProps> = ({
       status: n.data.status || NodeStatus.IDLE,
       config: n.data.config || {},
       degree: degreeMap[n.id] || 0,
-      radius: 18,
+      radius: 24,
     }));
 
     const d3Links: D3Link[] = edges.map(e => ({
@@ -275,20 +261,18 @@ export const FlowDependencyGraph: React.FC<FlowDependencyGraphProps> = ({
     nodesRef.current = d3Nodes;
     linksRef.current = d3Links;
 
-    // D3 Force Simulation Setup with High Performance Speed Settings
     const width = container.clientWidth || 800;
-    const height = container.clientHeight || 450;
+    const height = container.clientHeight || 500;
 
     const simulation = d3.forceSimulation<D3Node>(d3Nodes)
-      .alphaDecay(0.08)
-      .velocityDecay(0.35)
-      .force('link', d3.forceLink<D3Node, D3Link>(d3Links).id(d => d.id).distance(110))
-      .force('charge', d3.forceManyBody().strength(-240))
+      .alphaDecay(0.06)
+      .velocityDecay(0.3)
+      .force('link', d3.forceLink<D3Node, D3Link>(d3Links).id(d => d.id).distance(140))
+      .force('charge', d3.forceManyBody().strength(-350))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide<D3Node>().radius(d => d.radius + 18));
+      .force('collision', d3.forceCollide<D3Node>().radius(d => d.radius + 20));
 
-    // Pre-warm layout steps for instant initial presentation
-    for (let i = 0; i < 25; ++i) simulation.tick();
+    for (let i = 0; i < 30; ++i) simulation.tick();
 
     simulationRef.current = simulation;
 
@@ -296,9 +280,9 @@ export const FlowDependencyGraph: React.FC<FlowDependencyGraphProps> = ({
       renderCanvas();
     });
 
-    // D3 Zoom Behavior on Canvas
+    // D3 Zoom Behavior
     const zoom = d3.zoom<HTMLCanvasElement, unknown>()
-      .scaleExtent([0.2, 3])
+      .scaleExtent([0.2, 3.5])
       .on('zoom', (event) => {
         transformRef.current = event.transform;
         setZoomLevel(Math.round(event.transform.k * 100) / 100);
@@ -308,91 +292,42 @@ export const FlowDependencyGraph: React.FC<FlowDependencyGraphProps> = ({
     zoomRef.current = zoom;
     d3.select(canvas).call(zoom);
 
-    // Canvas Mouse / Touch Dragging and Node Selection Handlers
-    let dragStartPos = { x: 0, y: 0 };
-    let draggedNode: D3Node | null = null;
-
-    const getCanvasCoords = (e: MouseEvent | Touch) => {
+    // Canvas Click Node Selection
+    const handleCanvasClick = (event: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
       const transform = transformRef.current;
-      const worldX = (mouseX - transform.x) / transform.k;
-      const worldY = (mouseY - transform.y) / transform.k;
-      return { worldX, worldY, mouseX, mouseY };
-    };
+      const worldX = (x - transform.x) / transform.k;
+      const worldY = (y - transform.y) / transform.k;
 
-    const handlePointerDown = (e: MouseEvent) => {
-      const { worldX, worldY, mouseX, mouseY } = getCanvasCoords(e);
-      dragStartPos = { x: mouseX, y: mouseY };
-
-      // Find clicked node within radius
-      const targetNode = nodesRef.current.find(n => {
-        if (n.x == null || n.y == null) return false;
-        const dx = n.x - worldX;
-        const dy = n.y - worldY;
-        return (dx * dx + dy * dy) <= (n.radius + 10) * (n.radius + 10);
-      });
-
-      if (targetNode) {
-        draggedNode = targetNode;
-        draggedNode.fx = worldX;
-        draggedNode.fy = worldY;
-        simulation.alphaTarget(0.2).restart();
-      }
-    };
-
-    const handlePointerMove = (e: MouseEvent) => {
-      if (!draggedNode) return;
-      const { worldX, worldY } = getCanvasCoords(e);
-      draggedNode.fx = worldX;
-      draggedNode.fy = worldY;
-      renderCanvas();
-    };
-
-    const handlePointerUp = (e: MouseEvent) => {
-      const { mouseX, mouseY } = getCanvasCoords(e);
-      const distMoved = Math.hypot(mouseX - dragStartPos.x, mouseY - dragStartPos.y);
-
-      if (draggedNode) {
-        // If click without heavy movement, select the node
-        if (distMoved < 6) {
-          setSelectedNode(draggedNode);
-          if (onSelectNode) onSelectNode(draggedNode.id);
+      let clicked: D3Node | null = null;
+      for (const node of nodesRef.current) {
+        if (node.x != null && node.y != null) {
+          const dx = worldX - node.x;
+          const dy = worldY - node.y;
+          if (dx * dx + dy * dy <= (node.radius + 10) * (node.radius + 10)) {
+            clicked = node;
+            break;
+          }
         }
-        draggedNode.fx = null;
-        draggedNode.fy = null;
-        draggedNode = null;
-        simulation.alphaTarget(0);
-      } else if (distMoved < 6) {
-        // Clicked empty background canvas
-        setSelectedNode(null);
+      }
+
+      setSelectedNode(clicked);
+      if (clicked && onSelectNode) {
+        onSelectNode(clicked.id);
       }
     };
 
-    canvas.addEventListener('mousedown', handlePointerDown);
-    window.addEventListener('mousemove', handlePointerMove);
-    window.addEventListener('mouseup', handlePointerUp);
-
-    const resizeObserver = new ResizeObserver(() => {
-      updateCanvasDimensions();
-    });
-    resizeObserver.observe(container);
+    canvas.addEventListener('click', handleCanvasClick);
 
     return () => {
+      observer.disconnect();
+      canvas.removeEventListener('click', handleCanvasClick);
       simulation.stop();
-      canvas.removeEventListener('mousedown', handlePointerDown);
-      window.removeEventListener('mousemove', handlePointerMove);
-      window.removeEventListener('mouseup', handlePointerUp);
-      resizeObserver.disconnect();
     };
-
   }, [nodes, edges, isFullscreen, renderCanvas, onSelectNode]);
-
-  // Re-trigger render when search filter changes
-  useEffect(() => {
-    renderCanvas();
-  }, [filterQuery, selectedNode, renderCanvas]);
 
   const handleZoomReset = () => {
     if (canvasRef.current && zoomRef.current) {
@@ -413,47 +348,60 @@ export const FlowDependencyGraph: React.FC<FlowDependencyGraphProps> = ({
   };
 
   const graphJSX = (
-    <div className={`relative w-full h-full bg-[#0a0c10] border border-blue-900/40 rounded-3xl flex flex-col overflow-hidden select-none font-sans ${isFullscreen ? 'fixed inset-0 z-[99999] rounded-none border-none' : 'min-h-[450px]'}`}>
+    <div className={`relative w-full h-full bg-gray-950 border border-blue-900/40 rounded-2xl flex flex-col overflow-hidden select-none font-sans ${
+      isFullscreen ? '!fixed !inset-0 z-[999999] !w-screen !h-screen rounded-none border-none' : 'min-h-[420px] sm:min-h-[520px]'
+    }`}>
       
-      {/* GRAPH CONTROL BAR - RESPONSIVE & MOBILE FIRST */}
-      <div className="absolute top-2 left-2 right-2 sm:top-3 sm:left-3 sm:right-3 z-10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 bg-gray-900/95 backdrop-blur-md p-2.5 rounded-2xl border border-gray-800 shadow-2xl">
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 bg-blue-950/80 border border-blue-900 px-2.5 py-1 rounded-xl shrink-0">
-            <span className="text-xs">📊</span>
-            <span className="text-[11px] sm:text-xs font-black uppercase text-blue-300">
-              Canvas Grafo D3 ({nodes.length} Nós)
+      {/* FLOATING HUD CONTROLS */}
+      <div className="absolute top-2 left-2 right-2 sm:top-4 sm:left-4 sm:right-4 z-30 flex flex-wrap items-center justify-between gap-2 p-2.5 sm:p-3 rounded-2xl bg-gray-900/90 backdrop-blur-xl border border-blue-500/30 shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
+        
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-blue-950/90 border border-blue-700/60 px-3 py-1 rounded-xl shrink-0">
+            <span className="text-sm">⚙️</span>
+            <span className="text-xs font-black uppercase tracking-wider text-blue-200">
+              Grafo de Fluxo ({nodes.length})
             </span>
           </div>
 
-          <input
-            type="text"
-            value={filterQuery}
-            onChange={(e) => setFilterQuery(e.target.value)}
-            placeholder="Filtrar nó..."
-            className="bg-gray-950 border border-gray-800 text-xs text-white px-2.5 py-1 rounded-xl outline-none focus:border-blue-500 w-28 sm:w-40 font-mono shrink-0"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              value={filterQuery}
+              onChange={(e) => setFilterQuery(e.target.value)}
+              placeholder="Filtrar nós..."
+              className="w-32 sm:w-48 bg-gray-950/90 border border-gray-800 text-xs text-white placeholder-gray-500 px-3 py-1 rounded-xl outline-none focus:border-blue-500 font-mono"
+            />
+            {filterQuery && (
+              <button 
+                onClick={() => setFilterQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white text-xs"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center justify-between md:justify-end gap-1.5 shrink-0 pt-1 md:pt-0 border-t md:border-t-0 border-gray-800">
-          <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-gray-950/80 p-1 rounded-xl border border-gray-800">
             <button
               onClick={handleZoomIn}
-              className="w-8 h-8 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl border border-gray-700 flex items-center justify-center text-xs active:scale-95"
+              className="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-lg flex items-center justify-center text-xs active:scale-95"
               title="Aumentar Zoom"
             >
               +
             </button>
             <button
               onClick={handleZoomOut}
-              className="w-8 h-8 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl border border-gray-700 flex items-center justify-center text-xs active:scale-95"
+              className="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-lg flex items-center justify-center text-xs active:scale-95"
               title="Diminuir Zoom"
             >
               -
             </button>
             <button
               onClick={handleZoomReset}
-              className="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-[10px] font-bold rounded-xl border border-gray-700 active:scale-95 uppercase"
-              title="Centralizar Visualização"
+              className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 text-[10px] font-bold rounded-lg active:scale-95 uppercase"
+              title="Centralizar"
             >
               Reset
             </button>
@@ -461,9 +409,9 @@ export const FlowDependencyGraph: React.FC<FlowDependencyGraphProps> = ({
 
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black rounded-xl shadow-lg shadow-blue-950/50 transition-all uppercase tracking-wider active:scale-95 flex items-center gap-1.5 shrink-0"
+            className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[11px] font-black rounded-xl shadow-lg shadow-blue-950/50 transition-all uppercase tracking-wider active:scale-95 flex items-center gap-1.5 shrink-0 border border-blue-400/30"
           >
-            {isFullscreen ? '✕ Sair da Tela Cheia' : '🖥️ Tela Cheia'}
+            {isFullscreen ? '✕ Sair' : '🖥️ Tela Cheia'}
           </button>
         </div>
       </div>
@@ -475,14 +423,14 @@ export const FlowDependencyGraph: React.FC<FlowDependencyGraphProps> = ({
 
       {/* INSPECTOR CARD OVERLAY */}
       {selectedNode && (
-        <div className="absolute bottom-3 right-3 left-3 sm:left-auto sm:right-3 z-20 sm:w-72 bg-gray-900/95 border border-blue-900/80 p-4 rounded-2xl shadow-2xl backdrop-blur-md animate-fade-in space-y-2">
+        <div className="absolute bottom-3 right-3 left-3 sm:left-auto sm:right-3 z-40 sm:w-80 bg-gray-900/95 border border-blue-600/60 p-4 rounded-2xl shadow-2xl backdrop-blur-xl animate-fade-in space-y-2.5">
           <div className="flex items-center justify-between border-b border-gray-800 pb-2">
             <h4 className="text-xs font-black text-white flex items-center gap-1.5 uppercase tracking-wider">
               <span>Nó Selecionado</span>
             </h4>
             <button
               onClick={() => setSelectedNode(null)}
-              className="text-gray-400 hover:text-white text-xs font-bold"
+              className="w-6 h-6 rounded-full bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center text-xs"
             >
               ✕
             </button>
@@ -527,4 +475,3 @@ export const FlowDependencyGraph: React.FC<FlowDependencyGraphProps> = ({
 
   return graphJSX;
 };
-

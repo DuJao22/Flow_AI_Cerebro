@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import * as d3 from 'd3';
 import { brainService, BrainMemory } from '../services/brainService';
@@ -31,6 +31,7 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const simulationRef = useRef<d3.Simulation<D3BrainNode, D3BrainLink> | null>(null);
 
   const [memories, setMemories] = useState<BrainMemory[]>([]);
   const [selectedNode, setSelectedNode] = useState<D3BrainNode | null>(null);
@@ -48,12 +49,24 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
     setMemories(mems);
   };
 
-  // Re-run D3 layout when dependencies or fullscreen state changes
+  // ESC Key listener for Fullscreen mode
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
+
+  // Main D3 Graph Rendering & Simulation Setup
+  const initGraph = useCallback(() => {
     if (!svgRef.current || !containerRef.current) return;
 
-    const width = containerRef.current.clientWidth || (isFullscreen ? window.innerWidth : 900);
-    const height = containerRef.current.clientHeight || (isFullscreen ? window.innerHeight : 550);
+    const rect = containerRef.current.getBoundingClientRect();
+    const width = Math.max(rect.width || (isFullscreen ? window.innerWidth : 900), 300);
+    const height = Math.max(rect.height || (isFullscreen ? window.innerHeight : 600), 300);
 
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
@@ -65,9 +78,9 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
     // 1. Central Core Node
     const coreNode: D3BrainNode = {
       id: 'core_brain',
-      label: '🧠 CÉREBRO DE IA',
+      label: '🧠 CÉREBRO IA',
       type: 'core',
-      radius: 34
+      radius: 42
     };
     nodesMap.set(coreNode.id, coreNode);
 
@@ -86,17 +99,17 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
         label: `${cat.icon} ${cat.label}`,
         type: 'category',
         category: cat.key,
-        radius: 24
+        radius: 30
       };
       nodesMap.set(catNode.id, catNode);
     });
 
     // 3. Source Hub Nodes
     const sources = [
-      { key: 'user', label: 'Manual (User)', icon: '👤' },
+      { key: 'user', label: 'User', icon: '👤' },
       { key: 'auto', label: 'AI Chat', icon: '🤖' },
-      { key: 'flow_execution', label: 'Execução de Fluxo', icon: '⚙️' },
-      { key: 'landing_page', label: 'Landing Page', icon: '🎨' }
+      { key: 'flow_execution', label: 'Fluxo', icon: '⚙️' },
+      { key: 'landing_page', label: 'Landing', icon: '🎨' }
     ];
 
     sources.forEach(src => {
@@ -104,7 +117,7 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
         id: `src_${src.key}`,
         label: `${src.icon} ${src.label}`,
         type: 'source',
-        radius: 20
+        radius: 24
       };
       nodesMap.set(srcNode.id, srcNode);
     });
@@ -112,7 +125,6 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
     // 4. Memory Nodes & Links
     const links: D3BrainLink[] = [];
 
-    // Connect Categories and Sources to Core
     categories.forEach(cat => {
       links.push({
         id: `link_core_cat_${cat.key}`,
@@ -131,7 +143,7 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
       });
     });
 
-    // Filter memories if needed
+    // Filter memories
     const filteredMemories = memories.filter(m => {
       const matchCat = filterCategory === 'all' || m.category === filterCategory;
       const matchSearch = !searchQuery || m.content.toLowerCase().includes(searchQuery.toLowerCase());
@@ -139,10 +151,10 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
     });
 
     filteredMemories.forEach(mem => {
-      const r = mem.importance === 'high' ? 16 : mem.importance === 'medium' ? 12 : 9;
+      const baseR = mem.importance === 'high' ? 20 : mem.importance === 'medium' ? 16 : 13;
       const memNode: D3BrainNode = {
         id: mem.id,
-        label: mem.content.length > 25 ? mem.content.slice(0, 22) + '...' : mem.content,
+        label: mem.content.length > 22 ? mem.content.slice(0, 20) + '...' : mem.content,
         type: 'memory',
         category: mem.category,
         importance: mem.importance,
@@ -150,11 +162,11 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
         content: mem.content,
         source: mem.source,
         createdAt: mem.createdAt,
-        radius: r + Math.min((mem.useCount || 0), 6)
+        radius: baseR + Math.min((mem.useCount || 0), 8)
       };
       nodesMap.set(memNode.id, memNode);
 
-      // Link Memory to Category Hub
+      // Link to Category
       links.push({
         id: `link_mem_${mem.id}_cat_${mem.category}`,
         source: mem.id,
@@ -162,7 +174,7 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
         type: 'category'
       });
 
-      // Link Memory to Source Hub
+      // Link to Source
       const srcKey = mem.source || 'user';
       if (nodesMap.has(`src_${srcKey}`)) {
         links.push({
@@ -174,7 +186,7 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
       }
     });
 
-    // Optimized semantic relationship links between memories using word indexing
+    // Semantic Links
     const wordIndex = new Map<string, string[]>();
     filteredMemories.forEach(m => {
       const words = m.content.toLowerCase().split(/\s+/).filter(w => w.length > 5);
@@ -206,7 +218,7 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
 
     const d3NodesArray = Array.from(nodesMap.values());
 
-    // Root Container Group for Zooming
+    // Root Group for Zoom
     const g = svg.append('g').attr('class', 'brain-main-group');
 
     // Zoom behavior
@@ -220,30 +232,31 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
     zoomRef.current = zoom;
     svg.call(zoom);
 
-    // Optimized High-Performance Force Simulation Setup
+    // Simulation Setup
     const simulation = d3.forceSimulation<D3BrainNode>(d3NodesArray)
-      .alphaDecay(0.08) // Settles 3.5x faster
-      .velocityDecay(0.35) // Prevents wild oscillations
+      .alphaDecay(0.06)
+      .velocityDecay(0.3)
       .force('link', d3.forceLink<D3BrainNode, D3BrainLink>(links).id(d => d.id).distance(d => {
-        if (d.type === 'core') return 140;
-        if (d.type === 'category') return 80;
-        if (d.type === 'source') return 95;
-        return 50;
+        if (d.type === 'core') return 160;
+        if (d.type === 'category') return 100;
+        if (d.type === 'source') return 110;
+        return 65;
       }))
       .force('charge', d3.forceManyBody().strength(d => {
         const n = d as D3BrainNode;
-        if (n.type === 'core') return -600;
-        if (n.type === 'category') return -300;
-        if (n.type === 'source') return -200;
-        return -90;
+        if (n.type === 'core') return -800;
+        if (n.type === 'category') return -450;
+        if (n.type === 'source') return -300;
+        return -120;
       }))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide<D3BrainNode>().radius(d => d.radius + 8));
+      .force('collision', d3.forceCollide<D3BrainNode>().radius(d => d.radius + 12));
 
-    // Pre-warm layout for 25 steps so initial position is instant & smooth
-    for (let i = 0; i < 25; ++i) simulation.tick();
+    simulationRef.current = simulation;
 
-    // Color mapper
+    // Pre-warm ticks
+    for (let i = 0; i < 30; ++i) simulation.tick();
+
     const getNodeColor = (d: D3BrainNode) => {
       if (d.type === 'core') return '#c084fc';
       if (d.type === 'source') return '#64748b';
@@ -270,9 +283,9 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
         if (d.type === 'source') return '#475569';
         return '#64748b';
       })
-      .attr('stroke-opacity', d => (d.type === 'semantic' ? 0.3 : d.type === 'core' ? 0.6 : 0.4))
-      .attr('stroke-width', d => (d.type === 'core' ? 2.5 : d.type === 'semantic' ? 1 : 1.5))
-      .attr('stroke-dasharray', d => (d.type === 'semantic' ? '3,3' : 'none'));
+      .attr('stroke-opacity', d => (d.type === 'semantic' ? 0.35 : d.type === 'core' ? 0.65 : 0.45))
+      .attr('stroke-width', d => (d.type === 'core' ? 3 : d.type === 'semantic' ? 1.2 : 2))
+      .attr('stroke-dasharray', d => (d.type === 'semantic' ? '4,4' : 'none'));
 
     // Drag behavior
     const dragstarted = (event: d3.D3DragEvent<SVGGElement, D3BrainNode, D3BrainNode>, d: D3BrainNode) => {
@@ -310,33 +323,37 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
         setSelectedNode(d);
       });
 
-    // Outer Halo / Pulse Circle (Lightweight vector halo without SVG raster filters)
+    // Halo Circle
     nodeGroup.append('circle')
-      .attr('r', d => d.radius + (d.type === 'core' ? 10 : 5))
+      .attr('r', d => d.radius + (d.type === 'core' ? 14 : d.type === 'category' ? 8 : 6))
       .attr('fill', d => getNodeColor(d))
-      .attr('fill-opacity', d => (d.type === 'core' ? 0.25 : 0.12))
+      .attr('fill-opacity', d => (d.type === 'core' ? 0.3 : 0.15))
       .attr('stroke', d => getNodeColor(d))
-      .attr('stroke-width', d => (d.type === 'core' ? 2 : 1))
-      .attr('stroke-opacity', 0.5);
+      .attr('stroke-width', d => (d.type === 'core' ? 2.5 : 1.5))
+      .attr('stroke-opacity', 0.6);
 
-    // Inner Circle
+    // Main Circle
     nodeGroup.append('circle')
       .attr('r', d => d.radius)
-      .attr('fill', d => (d.type === 'core' ? '#581c87' : '#090d16'))
+      .attr('fill', d => (d.type === 'core' ? '#3b0764' : d.type === 'category' ? '#0f172a' : '#090d16'))
       .attr('stroke', d => getNodeColor(d))
-      .attr('stroke-width', d => (d.type === 'core' ? 3 : 2));
+      .attr('stroke-width', d => (d.type === 'core' ? 3.5 : 2.5));
 
-    // Text Label inside Core / Category / Memory
+    // Text Label with Text-Stroke Halo
     nodeGroup.append('text')
       .text(d => d.label)
       .attr('text-anchor', 'middle')
-      .attr('dy', d => (d.type === 'memory' ? `${d.radius + 12}px` : '0.35em'))
-      .attr('font-size', d => (d.type === 'core' ? '12px' : d.type === 'category' ? '10px' : '9px'))
-      .attr('font-weight', 'bold')
-      .attr('fill', d => (d.type === 'core' || d.type === 'category' ? '#ffffff' : '#cbd5e1'))
+      .attr('dy', d => (d.type === 'memory' ? `${d.radius + 14}px` : '0.38em'))
+      .attr('font-size', d => (d.type === 'core' ? '14px' : d.type === 'category' ? '12px' : '10px'))
+      .attr('font-weight', '800')
+      .attr('fill', d => (d.type === 'core' || d.type === 'category' ? '#ffffff' : '#e2e8f0'))
+      .style('paint-order', 'stroke fill')
+      .style('stroke', '#06080e')
+      .style('stroke-width', '4px')
+      .style('stroke-linecap', 'round')
+      .style('stroke-linejoin', 'round')
       .style('pointer-events', 'none');
 
-    // Tick Handler
     simulation.on('tick', () => {
       link
         .attr('x1', d => (d.source as D3BrainNode).x || 0)
@@ -347,12 +364,35 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
       nodeGroup.attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
     });
 
-    // Clean up simulation when unmounted or re-rendered
-    return () => {
-      simulation.stop();
-    };
-
   }, [memories, filterCategory, searchQuery, isFullscreen]);
+
+  // Effect to re-init graph and attach ResizeObserver
+  useEffect(() => {
+    initGraph();
+
+    if (!containerRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0 && svgRef.current) {
+          const svg = d3.select(svgRef.current);
+          svg.attr('viewBox', [0, 0, width, height]);
+          if (simulationRef.current) {
+            simulationRef.current.force('center', d3.forceCenter(width / 2, height / 2));
+            simulationRef.current.alpha(0.2).restart();
+          }
+        }
+      }
+    });
+
+    observer.observe(containerRef.current);
+
+    return () => {
+      observer.disconnect();
+      if (simulationRef.current) simulationRef.current.stop();
+    };
+  }, [initGraph]);
 
   const handleZoomReset = () => {
     if (svgRef.current && zoomRef.current) {
@@ -382,88 +422,116 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
   };
 
   const graphJSX = (
-    <div className={`relative w-full h-full bg-[#07090e] border border-purple-900/40 rounded-3xl flex flex-col overflow-hidden select-none font-sans ${isFullscreen ? 'fixed inset-0 z-[99999] rounded-none border-none' : 'min-h-[480px]'}`}>
+    <div 
+      className={`relative w-full h-full bg-[#06080e] flex flex-col overflow-hidden select-none font-sans border border-purple-900/40 rounded-2xl ${
+        isFullscreen ? '!fixed !inset-0 z-[999999] !w-screen !h-screen rounded-none border-none' : 'min-h-[500px] sm:min-h-[600px]'
+      }`}
+    >
       
-      {/* GRAPH CONTROL BAR - MOBILE FIRST & RESPONSIVE */}
-      <div className="absolute top-2 left-2 right-2 sm:top-4 sm:left-4 sm:right-4 z-10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 bg-gray-900/95 backdrop-blur-md p-2.5 sm:p-3 rounded-2xl border border-purple-900/50 shadow-2xl">
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 bg-purple-950/80 border border-purple-800 px-2.5 py-1 rounded-xl shrink-0">
-            <span className="text-sm">🧠</span>
-            <span className="text-[11px] sm:text-xs font-black uppercase text-purple-200">
-              Grafo do Cérebro ({memories.length})
-            </span>
+      {/* FLOATING HUD CONTROLS - MOBILE FIRST STARTUP AESTHETIC */}
+      <div className="absolute top-2 left-2 right-2 sm:top-4 sm:left-4 sm:right-4 z-30 flex flex-col gap-2 p-2.5 sm:p-3 rounded-2xl bg-gray-900/90 backdrop-blur-xl border border-purple-500/30 shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
+        
+        {/* ROW 1: TITLE BADGE & SEARCH & ACTIONS */}
+        <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+          
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 bg-purple-950/90 border border-purple-700/60 px-3 py-1 rounded-xl shrink-0">
+              <span className="text-sm">🧠</span>
+              <span className="text-xs font-black uppercase tracking-wider text-purple-200">
+                Grafo D3 ({memories.length})
+              </span>
+            </div>
+
+            <div className="relative flex-1 sm:w-48">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar nó..."
+                className="w-full bg-gray-950/90 border border-gray-800 text-xs text-white placeholder-gray-500 px-3 py-1.5 rounded-xl outline-none focus:border-purple-500 font-mono"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white text-xs"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar memória ou nó..."
-            className="bg-gray-950 border border-gray-800 text-xs text-white px-2.5 py-1 rounded-xl outline-none focus:border-purple-500 w-28 sm:w-44 font-mono shrink-0"
-          />
-
-          <div className="flex items-center gap-1 overflow-x-auto max-w-full pb-0.5 custom-scrollbar">
-            {['all', 'rule', 'pattern', 'preference', 'insight', 'correction'].map(cat => (
+          <div className="flex items-center gap-1.5 ml-auto">
+            <div className="flex items-center gap-1 bg-gray-950/80 p-1 rounded-xl border border-gray-800">
               <button
-                key={cat}
-                onClick={() => setFilterCategory(cat)}
-                className={`px-2 py-1 text-[9px] font-bold uppercase tracking-wider rounded-lg border transition-all shrink-0 ${
-                  filterCategory === cat
-                    ? 'bg-purple-900 text-white border-purple-500'
-                    : 'bg-gray-950 border-gray-800 text-gray-400 hover:text-white'
-                }`}
+                onClick={handleZoomIn}
+                className="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-lg flex items-center justify-center text-xs active:scale-95"
+                title="Aumentar Zoom"
               >
-                {cat === 'all' ? 'Todas' : cat}
+                +
               </button>
-            ))}
+              <button
+                onClick={handleZoomOut}
+                className="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-lg flex items-center justify-center text-xs active:scale-95"
+                title="Diminuir Zoom"
+              >
+                -
+              </button>
+              <button
+                onClick={handleZoomReset}
+                className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 text-[10px] font-bold rounded-lg active:scale-95 uppercase"
+                title="Centralizar"
+              >
+                Reset
+              </button>
+            </div>
+
+            <button
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[11px] font-black rounded-xl shadow-lg shadow-purple-950/50 transition-all uppercase tracking-wider active:scale-95 flex items-center gap-1.5 shrink-0 border border-purple-400/30"
+            >
+              {isFullscreen ? '✕ Sair' : '🖥️ Tela Cheia'}
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center justify-between md:justify-end gap-1.5 shrink-0 pt-1 md:pt-0 border-t md:border-t-0 border-gray-800">
-          <div className="flex items-center gap-1">
+        {/* ROW 2: CATEGORY FILTERS */}
+        <div className="flex items-center gap-1 overflow-x-auto pb-0.5 custom-scrollbar">
+          {[
+            { id: 'all', label: 'Todas' },
+            { id: 'rule', label: '📜 Regras' },
+            { id: 'pattern', label: '🧩 Padrões' },
+            { id: 'preference', label: '⭐ Preferências' },
+            { id: 'insight', label: '💡 Insights' },
+            { id: 'correction', label: '🛠️ Correções' }
+          ].map(cat => (
             <button
-              onClick={handleZoomIn}
-              className="w-8 h-8 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl border border-gray-700 flex items-center justify-center text-xs active:scale-95"
-              title="Aumentar Zoom"
+              key={cat.id}
+              onClick={() => setFilterCategory(cat.id)}
+              className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-xl border transition-all shrink-0 ${
+                filterCategory === cat.id
+                  ? 'bg-purple-600 text-white border-purple-400 shadow-md shadow-purple-900/50'
+                  : 'bg-gray-950/80 border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
+              }`}
             >
-              +
+              {cat.label}
             </button>
-            <button
-              onClick={handleZoomOut}
-              className="w-8 h-8 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl border border-gray-700 flex items-center justify-center text-xs active:scale-95"
-              title="Diminuir Zoom"
-            >
-              -
-            </button>
-            <button
-              onClick={handleZoomReset}
-              className="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-[10px] font-bold rounded-xl border border-gray-700 active:scale-95 uppercase"
-              title="Centralizar"
-            >
-              Reset
-            </button>
-          </div>
-
-          <button
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-black rounded-xl shadow-lg shadow-purple-950/50 transition-all uppercase tracking-wider active:scale-95 flex items-center gap-1.5 shrink-0"
-          >
-            {isFullscreen ? '✕ Sair da Tela Cheia' : '🖥️ Tela Cheia'}
-          </button>
+          ))}
         </div>
+
       </div>
 
-      {/* SVG CANVAS */}
-      <div ref={containerRef} className="w-full h-full flex-1 cursor-grab active:cursor-grabbing">
-        <svg ref={svgRef} className="w-full h-full" />
+      {/* SVG CANVAS AREA */}
+      <div ref={containerRef} className="w-full h-full flex-1 cursor-grab active:cursor-grabbing relative">
+        <svg ref={svgRef} className="w-full h-full block" />
       </div>
 
       {/* NODE DETAILS INSPECTOR CARD */}
       {selectedNode && (
-        <div className="absolute bottom-3 right-3 left-3 sm:left-auto sm:right-4 z-20 sm:w-80 bg-gray-900/95 border border-purple-800/80 p-4 rounded-2xl shadow-2xl backdrop-blur-lg animate-fade-in space-y-2.5">
+        <div className="absolute bottom-3 right-3 left-3 sm:left-auto sm:right-4 z-40 sm:w-80 bg-gray-900/95 border border-purple-600/60 p-4 rounded-2xl shadow-2xl backdrop-blur-xl animate-fade-in space-y-3">
           <div className="flex items-center justify-between border-b border-gray-800 pb-2">
             <h4 className="text-xs font-black text-purple-300 uppercase tracking-wider flex items-center gap-2">
-              <span>{selectedNode.type === 'core' ? '🧠 Núcleo do Cérebro' : selectedNode.type === 'category' ? '🏷️ Categoria Hub' : selectedNode.type === 'source' ? '🔌 Fonte de Dados' : '📜 Memória Gravada'}</span>
+              <span>{selectedNode.type === 'core' ? '🧠 Núcleo do Cérebro' : selectedNode.type === 'category' ? '🏷️ Categoria Hub' : selectedNode.type === 'source' ? '🔌 Fonte' : '📜 Memória'}</span>
             </h4>
             <button
               onClick={() => setSelectedNode(null)}
@@ -475,7 +543,7 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
 
           {selectedNode.type === 'memory' ? (
             <div className="space-y-3 text-xs">
-              <div className="bg-gray-950 p-3 rounded-xl border border-gray-850 text-gray-200 font-sans leading-relaxed max-h-32 overflow-y-auto">
+              <div className="bg-gray-950 p-3 rounded-xl border border-gray-800 text-gray-200 font-sans leading-relaxed max-h-36 overflow-y-auto">
                 "{selectedNode.content}"
               </div>
 
@@ -485,7 +553,7 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
                   <span className="text-purple-400 font-bold uppercase">{selectedNode.category}</span>
                 </div>
                 <div className="bg-gray-950 p-2 rounded-lg border border-gray-850">
-                  <span className="text-gray-500 block">Importância:</span>
+                  <span className="text-gray-500 block">Prioridade:</span>
                   <span className="text-amber-400 font-bold uppercase">{selectedNode.importance}</span>
                 </div>
                 <div className="bg-gray-950 p-2 rounded-lg border border-gray-850">
@@ -493,15 +561,15 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
                   <span className="text-blue-400 font-bold">{selectedNode.source || 'user'}</span>
                 </div>
                 <div className="bg-gray-950 p-2 rounded-lg border border-gray-850">
-                  <span className="text-gray-500 block">Uso no Sistema:</span>
-                  <span className="text-emerald-400 font-bold">{selectedNode.useCount || 0} vezes</span>
+                  <span className="text-gray-500 block">Uso no Cérebro:</span>
+                  <span className="text-emerald-400 font-bold">{selectedNode.useCount || 0}x</span>
                 </div>
               </div>
 
               <div className="pt-1 flex justify-end">
                 <button
                   onClick={() => handleDeleteMemory(selectedNode.id)}
-                  className="bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-800 px-3 py-1 rounded-xl text-xs font-bold transition-all"
+                  className="bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800 px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
                 >
                   🗑️ Apagar Memória
                 </button>
@@ -509,9 +577,9 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
             </div>
           ) : (
             <div className="text-xs text-gray-300 space-y-1.5">
-              <p className="font-bold text-white">{selectedNode.label}</p>
+              <p className="font-bold text-white text-sm">{selectedNode.label}</p>
               <p className="text-[11px] text-gray-400 leading-relaxed">
-                Nó de agrupamento da estrutura do Cérebro. Arraste para reposicionar no mapa.
+                Nó centralizador de agrupamento de inteligência. Arraste no mapa para reorganizar.
               </p>
             </div>
           )}

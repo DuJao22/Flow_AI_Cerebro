@@ -189,38 +189,38 @@ ${testPrompt}`;
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-gray-900 border border-purple-900/60 rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-[0_0_50px_rgba(147,51,234,0.15)] overflow-hidden">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+      <div className="bg-gray-900 border border-purple-900/60 rounded-3xl w-full max-w-5xl h-[92vh] max-h-[92vh] flex flex-col shadow-[0_0_60px_rgba(147,51,234,0.2)] overflow-hidden">
         
         {/* HEADER */}
-        <div className="p-6 border-b border-gray-800 bg-gradient-to-r from-purple-950/80 via-gray-900 to-indigo-950/80 flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-gray-800 bg-gradient-to-r from-purple-950/80 via-gray-900 to-indigo-950/80 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-xl shadow-lg shadow-purple-900/40">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-lg sm:text-xl shadow-lg shadow-purple-900/40 shrink-0">
               🧠
             </div>
             <div>
-              <h2 className="text-base font-black text-white uppercase tracking-wider flex items-center gap-2">
-                Cérebro de Aprendizado IA
+              <h2 className="text-sm sm:text-base font-black text-white uppercase tracking-wider flex items-center gap-2 flex-wrap">
+                <span>Cérebro de Aprendizado IA</span>
                 <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2.5 py-0.5 rounded-full font-mono">
                   {memories.length} memórias
                 </span>
               </h2>
-              <p className="text-[11px] text-gray-400">Banco de Conhecimento Contínuo e Memória de Longo Prazo</p>
+              <p className="text-[10px] sm:text-[11px] text-gray-400">Banco de Conhecimento Contínuo e Memória de Longo Prazo</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white flex items-center justify-center transition-colors shrink-0"
           >
             ✕
           </button>
         </div>
 
-        {/* NAVIGATION TABS */}
-        <div className="px-6 pt-4 border-b border-gray-800 bg-gray-950/50 flex gap-2 flex-wrap">
+        {/* NAVIGATION TABS - SCROLLABLE ON MOBILE */}
+        <div className="px-4 sm:px-6 pt-3 border-b border-gray-800 bg-gray-950/50 flex gap-2 overflow-x-auto custom-scrollbar shrink-0">
           <button
             onClick={() => setActiveTab('memories')}
-            className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl transition-all border-b-2 ${
+            className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider rounded-t-xl transition-all border-b-2 shrink-0 ${
               activeTab === 'memories' 
                 ? 'border-purple-500 text-purple-300 bg-purple-950/30' 
                 : 'border-transparent text-gray-500 hover:text-gray-300'
@@ -230,7 +230,7 @@ ${testPrompt}`;
           </button>
           <button
             onClick={() => setActiveTab('graph')}
-            className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl transition-all border-b-2 ${
+            className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider rounded-t-xl transition-all border-b-2 shrink-0 ${
               activeTab === 'graph' 
                 ? 'border-purple-500 text-purple-300 bg-purple-950/40' 
                 : 'border-transparent text-purple-400/70 hover:text-purple-300'
@@ -240,7 +240,7 @@ ${testPrompt}`;
           </button>
           <button
             onClick={() => setActiveTab('test')}
-            className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl transition-all border-b-2 ${
+            className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider rounded-t-xl transition-all border-b-2 shrink-0 ${
               activeTab === 'test' 
                 ? 'border-indigo-500 text-indigo-300 bg-indigo-950/30' 
                 : 'border-transparent text-gray-500 hover:text-gray-300'
@@ -250,7 +250,7 @@ ${testPrompt}`;
           </button>
           <button
             onClick={() => setActiveTab('config')}
-            className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl transition-all border-b-2 ${
+            className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider rounded-t-xl transition-all border-b-2 shrink-0 ${
               activeTab === 'config' 
                 ? 'border-blue-500 text-blue-300 bg-blue-950/30' 
                 : 'border-transparent text-gray-500 hover:text-gray-300'
@@ -261,11 +261,11 @@ ${testPrompt}`;
         </div>
 
         {/* TAB CONTENT */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-gray-950/30">
+        <div className={`flex-1 overflow-y-auto custom-scrollbar bg-gray-950/30 flex flex-col ${activeTab === 'graph' ? 'p-1.5 sm:p-2 space-y-0' : 'p-3 sm:p-6 space-y-6'}`}>
           
           {/* --- TAB GRAFO DO CÉREBRO --- */}
           {activeTab === 'graph' && (
-            <div className="h-[520px] w-full">
+            <div className="w-full flex-1 h-full flex flex-col min-h-[500px] sm:min-h-[600px]">
               <BrainKnowledgeGraph onMemoryChange={loadMemories} />
             </div>
           )}

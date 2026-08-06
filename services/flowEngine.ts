@@ -237,17 +237,58 @@ export class FlowEngine {
 
           case NodeType.FILE_SAVE:
             const fileName = config?.fileName || `output-${Date.now()}.txt`;
-            let content = this.context['input'];
+            let rawInputContent = this.context['input'];
             
-            // Se vier do Gemini, extrai o texto principal
-            if (content?.candidates?.[0]?.content?.parts?.[0]?.text) {
-                content = content.candidates[0].content.parts[0].text;
-            }
+            // Helper function to extract clean HTML / string from potential JSON / Markdown wrappers
+            const extractCleanContent = (data: any): string => {
+              if (data === null || data === undefined) return '';
 
-            const fileContentStr = typeof content === 'object' ? JSON.stringify(content, null, 2) : String(content);
+              let extracted = data;
+
+              // If data is an object, check for known keys
+              if (typeof extracted === 'object') {
+                if (extracted.html_code) extracted = extracted.html_code;
+                else if (extracted.html) extracted = extracted.html;
+                else if (extracted.htmlCode) extracted = extracted.htmlCode;
+                else if (extracted.code) extracted = extracted.code;
+                else if (extracted.content && typeof extracted.content === 'string' && extracted.content.includes('<html')) extracted = extracted.content;
+                else if (extracted.candidates?.[0]?.content?.parts?.[0]?.text) {
+                  extracted = extracted.candidates[0].content.parts[0].text;
+                }
+              }
+
+              let str = typeof extracted === 'object' ? JSON.stringify(extracted, null, 2) : String(extracted);
+
+              // Try parsing stringified JSON
+              const trimmed = str.trim();
+              if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+                try {
+                  const parsed = JSON.parse(trimmed);
+                  if (parsed.html_code) str = parsed.html_code;
+                  else if (parsed.html) str = parsed.html;
+                  else if (parsed.htmlCode) str = parsed.htmlCode;
+                  else if (parsed.code) str = parsed.code;
+                } catch (e) {}
+              }
+
+              // Extract markdown codeblocks ```html ... ```
+              const markdownMatch = str.match(/```(?:html|xml)?\s*([\s\S]*?)\s*```/i);
+              if (markdownMatch) {
+                str = markdownMatch[1];
+              }
+
+              // Unescape literal backslash escapes (\n, \", \\) if present
+              if (str.includes('\\n') && !str.includes('\n')) {
+                str = str.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\').replace(/\\t/g, '  ');
+              }
+
+              return str.trim();
+            };
+
+            const fileContentStr = extractCleanContent(rawInputContent);
             const isHtmlPage = (config?.fileFormat === 'html' || fileName.endsWith('.html') || fileContentStr.toLowerCase().includes('<!doctype html') || fileContentStr.toLowerCase().includes('<html'));
 
-            if (this.onFileGenerated && content) {
+            if (this.onFileGenerated && fileContentStr) {
               this.onFileGenerated({
                   id: crypto.randomUUID(),
                   name: fileName,

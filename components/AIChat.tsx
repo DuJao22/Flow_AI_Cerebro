@@ -15,13 +15,15 @@ interface AIChatProps {
 
 const AIChat: React.FC<AIChatProps> = ({ onImportFlow, logs, nodes, edges }) => {
   const renderFormattedText = (content: string) => {
+    if (!content) return '';
+    let formatted = content;
     // Convert markdown links [text](url)
-    let formatted = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-400 underline hover:text-blue-300 font-bold">$1</a>');
-    // Convert markdown bold **text**
-    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-white">$1</strong>');
-    formatted = formatted.replace(/__(.*?)__/g, '<strong class="font-extrabold text-white">$1</strong>');
+    formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-400 underline hover:text-blue-300 font-bold">$1</a>');
+    // Convert markdown bold **text** or __text__ across multiple lines
+    formatted = formatted.replace(/\*\*([\s\S]*?)\*\*/g, '<strong class="font-extrabold text-white">$1</strong>');
+    formatted = formatted.replace(/__([\s\S]*?)__/g, '<strong class="font-extrabold text-white">$1</strong>');
     // Convert markdown italic *text*
-    formatted = formatted.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>');
+    formatted = formatted.replace(/\*([^\*]+)\*/g, '<em class="italic text-gray-200">$1</em>');
     // Line breaks
     formatted = formatted.replace(/\n/g, '<br/>');
     return formatted;
@@ -31,7 +33,7 @@ const AIChat: React.FC<AIChatProps> = ({ onImportFlow, logs, nodes, edges }) => 
   const [messages, setMessages] = useState<AIMessage[]>([
     { 
       role: 'system', 
-      content: `Olá! Sou o **AI Architect**, especialista em **Landing Pages de Alto Padrão (Luxury, High-Converting & Responsive)** e Automações de Fluxo.\n\nCada página criada passa por aprendizado contínuo do **Cérebro de IA**, que analisa estruturas e animações para criar designs cada vez melhores!\n\n⚡ **Sistema desenvolvido por @layon.dev**\nSiga no Instagram: [**@layon.dev**](https://instagram.com/layon.dev) para acompanhar as atualizações! Como posso ajudar você hoje?`, 
+      content: `Olá! Sou o **AI Architect**, especialista em **Landing Pages de Alto Padrão (Luxury, High-Converting & Responsive)** e Automações de Fluxos.\n\nCada página criada passa por aprendizado contínuo do **Cérebro de IA**, que analisa estruturas, componentes e animações para aperfeiçoar cada novo desenvolvimento!\n\n⚡ **Todos os direitos e créditos do criador do sistema:**\nDesenvolvido por **João Layon**.\n👉 Siga no Instagram: [**@layon.dev**](https://instagram.com/layon.dev) para novidades e atualizações!\n\nComo posso ajudar você a criar hoje?`, 
       timestamp: Date.now() 
     }
   ]);

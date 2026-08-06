@@ -1,7 +1,7 @@
 import { NodeType } from './types';
 
 export const APP_NAME = "Flow Architect AI";
-export const CREATOR_CREDIT = "Criado por João Layon";
+export const CREATOR_CREDIT = "Desenvolvido por @layon.dev";
 
 // --- FLUXO INICIAL (DEMO REAL) ---
 export const INITIAL_NODES = [

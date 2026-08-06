@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { GeneratedFile } from '../types';
 import { brainService } from '../services/brainService';
 
@@ -15,6 +16,37 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
   const [copied, setCopied] = useState(false);
   const [learningMessage, setLearningMessage] = useState<string | null>(null);
   const [isLearning, setIsLearning] = useState(false);
+
+  // Helper to extract pure clean HTML from stringified JSON or markdown codeblocks
+  const getCleanHtmlContent = (content: string): string => {
+    if (!content) return '';
+    let text = content;
+
+    // If text is a stringified JSON containing html_code / html / code
+    const trimmed = text.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed.html_code) text = parsed.html_code;
+        else if (parsed.html) text = parsed.html;
+        else if (parsed.code) text = parsed.code;
+        else if (parsed.content) text = parsed.content;
+      } catch (e) {}
+    }
+
+    // Markdown block extraction
+    const match = text.match(/```(?:html|xml)?\s*([\s\S]*?)\s*```/i);
+    if (match) {
+      text = match[1];
+    }
+
+    // Unescape literal escapes (\n, \", \\)
+    if (text.includes('\\n') && !text.includes('\n')) {
+      text = text.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\').replace(/\\t/g, '  ');
+    }
+
+    return text.trim();
+  };
 
   const downloadFile = (file: GeneratedFile) => {
     const byteOrderMark = '\uFEFF';
@@ -212,7 +244,7 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
             <div className="flex-1 bg-gray-950 overflow-hidden relative">
               {previewMode === 'preview' ? (
                 <iframe
-                  srcDoc={selectedFile.content}
+                  srcDoc={getCleanHtmlContent(selectedFile.content)}
                   title="HTML Preview"
                   className="w-full h-full border-none bg-white"
                   sandbox="allow-scripts allow-modals allow-same-origin"
@@ -220,20 +252,20 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
               ) : (
                 <div className="relative h-full">
                   <button
-                    onClick={() => handleCopyCode(selectedFile.content)}
+                    onClick={() => handleCopyCode(getCleanHtmlContent(selectedFile.content))}
                     className="absolute top-3 right-3 z-10 bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-sans font-bold border border-gray-700 transition-colors"
                   >
                     {copied ? '✅ Copiado!' : '📋 Copiar Código'}
                   </button>
                   <pre className="h-full p-4 overflow-auto text-[11px] leading-relaxed text-emerald-400 font-mono bg-gray-950">
-                    {selectedFile.content}
+                    {getCleanHtmlContent(selectedFile.content)}
                   </pre>
                 </div>
               )}
             </div>
 
             {/* MODAL FOOTER */}
-            <div className="p-3 border-t border-gray-800 bg-gray-950 flex items-center justify-between">
+            <div className="p-3 border-t border-gray-800 bg-gray-950 flex items-center justify-between shrink-0">
               <button
                 onClick={() => handleAbsorbLearning(selectedFile)}
                 disabled={isLearning}
@@ -258,14 +290,15 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ========================================================================= */}
       {/* MODAL TELA CHEIA (FULLSCREEN VIEWPORT) */}
       {/* ========================================================================= */}
-      {selectedFile && isFullscreen && (
-        <div className="fixed inset-0 z-[250] bg-gray-950 flex flex-col w-screen h-screen overflow-hidden animate-fade-in">
+      {selectedFile && isFullscreen && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-gray-950 flex flex-col w-screen h-screen overflow-hidden animate-fade-in">
           
           {/* TOOLBAR EM TELA CHEIA */}
           <div className="h-14 bg-gray-900 border-b border-gray-800 px-4 flex items-center justify-between shrink-0 select-none">
@@ -364,14 +397,15 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
               className="h-full max-h-full bg-white transition-all duration-300 shadow-2xl md:rounded-2xl overflow-hidden border border-gray-800 relative"
             >
               <iframe
-                srcDoc={selectedFile.content}
+                srcDoc={getCleanHtmlContent(selectedFile.content)}
                 title="Landing Page Fullscreen Preview"
                 className="w-full h-full border-none"
                 sandbox="allow-scripts allow-modals allow-same-origin"
               />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
