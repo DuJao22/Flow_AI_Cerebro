@@ -20,34 +20,50 @@ class KeyManager {
     this.keys = []; // Reset
 
     // 1. Chave do Usuário (LocalStorage) - PRIORIDADE MÁXIMA
-    // Permite que o usuário insira sua própria chave nas configurações
     let customKey: string | null = null;
     if (typeof window !== 'undefined') {
-        customKey = localStorage.getItem('gemini_api_key');
+      customKey = localStorage.getItem('gemini_api_key') || localStorage.getItem('flow_architect_brain_gemini_key');
     }
 
-    if (customKey && customKey.trim().length > 20 && customKey.startsWith('AIza')) {
-        this.keys.push(customKey.trim());
+    if (customKey) {
+      const cleanCustomKey = customKey.replace(/^["']|["']$/g, '').trim();
+      if (cleanCustomKey.length > 15) {
+        this.keys.push(cleanCustomKey);
+      }
     }
 
-    // 2. Chaves do ambiente (Vercel)
-    // Só carrega se não tiver chave customizada ou para fallback
+    // 2. Chaves do ambiente (Vercel, Vite, Cloud Run)
     let envKeys: string[] = [];
     try {
-      const rawEnv = process.env.API_KEY || "";
-      if (rawEnv && rawEnv !== "undefined" && rawEnv !== "null") {
-        envKeys = rawEnv.split(/[\s,]+/).map(k => k.trim()).filter(k => k.length > 20 && k.startsWith('AIza'));
+      const candidates = [
+        process.env.GEMINI_API_KEY,
+        process.env.VITE_GEMINI_API_KEY,
+        process.env.API_KEY,
+        (import.meta as any).env?.VITE_GEMINI_API_KEY,
+        (import.meta as any).env?.GEMINI_API_KEY,
+      ];
+
+      for (const candidate of candidates) {
+        if (candidate && typeof candidate === 'string' && candidate !== 'undefined' && candidate !== 'null') {
+          const parts = candidate.split(/[\s,]+/);
+          for (const p of parts) {
+            const clean = p.replace(/^["']|["']$/g, '').trim();
+            if (clean.length > 15) {
+              envKeys.push(clean);
+            }
+          }
+        }
       }
     } catch (e) {}
 
     // 3. Chaves do arquivo físico
     const fileKeys = Array.isArray(MY_API_KEYS) 
-      ? MY_API_KEYS.map(k => k.trim()).filter(k => k && k.length > 20 && k.startsWith('AIza')) 
+      ? MY_API_KEYS.map(k => (k || '').replace(/^["']|["']$/g, '').trim()).filter(k => k.length > 15) 
       : [];
     
-    // Mescla chaves de ambiente e arquivo, mas a customKey fica sempre em primeiro se existir
-    const systemKeys = Array.from(new Set([...envKeys, ...fileKeys]));
-    this.keys = [...this.keys, ...systemKeys];
+    // Mescla chaves de ambiente e arquivo, mantendo ordem e evitando duplicatas
+    const allKeys = Array.from(new Set([...this.keys, ...envKeys, ...fileKeys]));
+    this.keys = allKeys;
     
     // Fallback log
     if (this.keys.length === 0) {

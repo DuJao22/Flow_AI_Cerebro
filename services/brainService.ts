@@ -127,8 +127,9 @@ export const brainService = {
 
   getEffectiveApiKey: async (): Promise<string> => {
     const dedicated = brainService.getDedicatedApiKey();
-    if (dedicated && dedicated.length > 20 && dedicated.startsWith('AIza')) {
-      return dedicated;
+    const cleanDedicated = (dedicated || '').replace(/^["']|["']$/g, '').trim();
+    if (cleanDedicated && cleanDedicated.length > 15) {
+      return cleanDedicated;
     }
     const { keyManager } = await import('./keyManager');
     return keyManager.getActiveKey();
@@ -276,7 +277,7 @@ CÓDIGO DA PÁGINA (Amostra):
 ${htmlContent.substring(0, 3000)}`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.5-flash',
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { maxOutputTokens: 100, temperature: 0.2 }
       });
