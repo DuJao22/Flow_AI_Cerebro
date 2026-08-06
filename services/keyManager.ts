@@ -6,6 +6,11 @@ import { MY_API_KEYS } from '../api_keys_list';
 
 type KeyListener = (status: string) => void;
 
+const sanitizeKey = (k: string): string => {
+  if (!k) return '';
+  return k.replace(/^["'“”‘’`\s]+|["'“”‘’`\s]+$/g, '').trim();
+};
+
 class KeyManager {
   private keys: string[] = [];
   private currentIndex: number = 0;
@@ -26,7 +31,7 @@ class KeyManager {
     }
 
     if (customKey) {
-      const cleanCustomKey = customKey.replace(/^["']|["']$/g, '').trim();
+      const cleanCustomKey = sanitizeKey(customKey);
       if (cleanCustomKey.length > 15) {
         this.keys.push(cleanCustomKey);
       }
@@ -47,7 +52,7 @@ class KeyManager {
         if (candidate && typeof candidate === 'string' && candidate !== 'undefined' && candidate !== 'null') {
           const parts = candidate.split(/[\s,]+/);
           for (const p of parts) {
-            const clean = p.replace(/^["']|["']$/g, '').trim();
+            const clean = sanitizeKey(p);
             if (clean.length > 15) {
               envKeys.push(clean);
             }
@@ -58,7 +63,7 @@ class KeyManager {
 
     // 3. Chaves do arquivo físico
     const fileKeys = Array.isArray(MY_API_KEYS) 
-      ? MY_API_KEYS.map(k => (k || '').replace(/^["']|["']$/g, '').trim()).filter(k => k.length > 15) 
+      ? MY_API_KEYS.map(k => sanitizeKey(k || '')).filter(k => k.length > 15) 
       : [];
     
     // Mescla chaves de ambiente e arquivo, mantendo ordem e evitando duplicatas
@@ -74,8 +79,9 @@ class KeyManager {
 
   public setCustomKey(key: string) {
       // Método chamado quando o usuário salva no SettingsModal
-      if (key && key.trim()) {
-        localStorage.setItem('gemini_api_key', key.trim());
+      const clean = sanitizeKey(key);
+      if (clean) {
+        localStorage.setItem('gemini_api_key', clean);
       } else {
         localStorage.removeItem('gemini_api_key');
       }

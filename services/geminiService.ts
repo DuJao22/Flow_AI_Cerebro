@@ -5,9 +5,9 @@ import { keyManager } from './keyManager';
 import { brainService } from './brainService';
 
 /**
- * Lista de modelos Gemini suportados em ordem de preferência
+ * Lista de modelos Gemini válidos suportados em ordem de preferência
  */
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+const GEMINI_MODELS = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
 
 /**
  * Valida uma chave de API fazendo uma requisição mínima

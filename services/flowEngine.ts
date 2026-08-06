@@ -339,7 +339,7 @@ Forneça uma resposta clara, estruturada e diretamente útil em formato JSON ou 
             `;
 
             const brainResponse = await ai.models.generateContent({
-              model: 'gemini-3-flash-preview',
+              model: 'gemini-3.6-flash',
               contents: [{ role: 'user', parts: [{ text: promptText }] }],
               config: { temperature: 0.2 }
             });
@@ -364,7 +364,7 @@ Forneça uma resposta clara, estruturada e diretamente útil em formato JSON ou 
               const learnPrompt = `Analise a execução recente e extraia 1 nova regra ou insight curto para o Cérebro aprender. Se não houver nada novo a aprender, responda APENAS "NADA". Texto: ${brainText}`;
               try {
                 const learnRes = await ai.models.generateContent({
-                  model: 'gemini-3-flash-preview',
+                  model: 'gemini-3.6-flash',
                   contents: [{ role: 'user', parts: [{ text: learnPrompt }] }],
                   config: { maxOutputTokens: 60, temperature: 0.1 }
                 });

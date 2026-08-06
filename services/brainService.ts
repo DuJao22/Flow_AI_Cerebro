@@ -285,7 +285,7 @@ Responda em APENAS 1 frase direta e prática.
 CÓDIGO (Trecho):
 ${htmlContent.substring(0, 3000)}`;
 
-        const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+        const modelsToTry = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
         for (const modelName of modelsToTry) {
           try {
             const response = await ai.models.generateContent({
