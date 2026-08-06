@@ -13,12 +13,12 @@ const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash
  * Valida uma chave de API fazendo uma requisição mínima
  */
 export const validateGeminiKey = async (rawApiKey: string): Promise<{ valid: boolean; error?: string }> => {
-  const apiKey = rawApiKey.replace(/^["']|["']$/g, '').trim();
+  const apiKey = rawApiKey.replace(/^["'“”‘’]|["'“”‘’]$/g, '').trim();
   if (!apiKey || apiKey.length < 15) {
     return { valid: false, error: 'Chave muito curta ou vazia' };
   }
 
-  let lastErrorMsg = 'Erro desconhecido';
+  let lastErrorMsg = 'Erro desconhecido ao conectar com o Google Gemini';
 
   for (const model of GEMINI_MODELS) {
     try {
@@ -34,19 +34,19 @@ export const validateGeminiKey = async (rawApiKey: string): Promise<{ valid: boo
 
       return { valid: true };
     } catch (error: any) {
-      console.error(`Key Validation Error (${model}):`, error);
+      console.warn(`Key Validation check (${model}):`, error);
       
-      if (error.status === 403 || error.message?.includes('403')) {
-        return { valid: false, error: 'Chave Inválida, Expirada ou Restrita (403)' };
-      }
       if (error.status === 400 || error.message?.includes('API_KEY_INVALID')) {
         return { valid: false, error: 'Chave Inexistente ou Malformada' };
       }
-      if (error.message?.includes('quota') || error.status === 429) {
-        return { valid: false, error: 'Quota Excedida na Chave' };
-      }
       
-      lastErrorMsg = error.message?.substring(0, 80) || 'Falha ao conectar com o Google Gemini';
+      if (error.status === 403 || error.message?.includes('403')) {
+        lastErrorMsg = 'Chave Inválida, Expirada ou Restrita (403)';
+      } else if (error.message?.includes('quota') || error.status === 429) {
+        lastErrorMsg = 'Quota Excedida para este modelo. Tentando modelos alternativos...';
+      } else {
+        lastErrorMsg = error.message?.substring(0, 80) || 'Falha ao conectar com o Google Gemini';
+      }
     }
   }
 

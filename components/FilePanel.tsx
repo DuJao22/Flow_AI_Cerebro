@@ -190,7 +190,7 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
       </div>
 
       {/* MODAL PADRÃO DE PRÉ-VISUALIZAÇÃO (INLINE) */}
-      {selectedFile && !isFullscreen && (
+      {selectedFile && !isFullscreen && createPortal(
         <div className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             
