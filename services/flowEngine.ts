@@ -335,7 +335,10 @@ ${typeof currentInput === 'object' ? JSON.stringify(currentInput, null, 2) : Str
 SUA DIRETIVA / TAREFA:
 ${directive}
 
-Forneça uma resposta clara, estruturada e diretamente útil em formato JSON ou texto limpo contendo sua decisão/resultado.
+OBSERVAÇÃO IMPORTANTE PARA GERAGÃO DE CÓDIGO HTML / PÁGINAS:
+Se esta tarefa envolver a criação ou geração de código HTML / Landing Page / Apresentação, você DEVE estruturar o conteúdo em FRAMES DE APRESENTAÇÃO DE TELA CHEIA (<section class="frame-slide"> ou blocos de 100vh) que são visualizados como slides sequenciais, sem necessidade de rolagem vertical exaustiva.
+
+Forneça uma resposta clara, estruturada e diretamente útil contendo sua decisão/resultado.
             `;
 
             const brainResponse = await ai.models.generateContent({

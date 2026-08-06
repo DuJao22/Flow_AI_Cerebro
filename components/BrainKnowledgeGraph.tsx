@@ -287,6 +287,32 @@ export const BrainKnowledgeGraph: React.FC<BrainKnowledgeGraphProps> = ({ onMemo
       .attr('stroke-width', d => (d.type === 'core' ? 3 : d.type === 'semantic' ? 1.2 : 2))
       .attr('stroke-dasharray', d => (d.type === 'semantic' ? '4,4' : 'none'));
 
+    // Animated Synaptic Pulse Particles
+    const synapsePulses = g.append('g')
+      .attr('class', 'synapse-pulses')
+      .selectAll('circle')
+      .data(links)
+      .enter()
+      .append('circle')
+      .attr('r', d => (d.type === 'core' ? 4 : 3))
+      .attr('fill', d => (d.type === 'core' ? '#c084fc' : d.type === 'semantic' ? '#f472b6' : '#38bdf8'))
+      .style('filter', 'drop-shadow(0px 0px 6px #c084fc)');
+
+    const timer = d3.timer((elapsed) => {
+      const progress = (elapsed / 1200) % 1;
+      synapsePulses
+        .attr('cx', d => {
+          const sx = (d.source as D3BrainNode).x || 0;
+          const tx = (d.target as D3BrainNode).x || 0;
+          return sx + (tx - sx) * progress;
+        })
+        .attr('cy', d => {
+          const sy = (d.source as D3BrainNode).y || 0;
+          const ty = (d.target as D3BrainNode).y || 0;
+          return sy + (ty - sy) * progress;
+        });
+    });
+
     // Drag behavior
     const dragstarted = (event: d3.D3DragEvent<SVGGElement, D3BrainNode, D3BrainNode>, d: D3BrainNode) => {
       if (!event.active) simulation.alphaTarget(0.2).restart();

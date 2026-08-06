@@ -7,9 +7,10 @@ import { validateGeminiKey } from '../services/geminiService';
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onInstallPWA?: () => void;
 }
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onInstallPWA }) => {
   const [apiKey, setApiKey] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [validationStatus, setValidationStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -123,10 +124,25 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             </div>
           </div>
           
-          <div className="bg-gray-800/50 rounded-xl p-4 text-xs text-gray-400 space-y-2 border border-gray-700/50">
-             <div className="flex justify-between">
-                <span>Versão</span>
-                <span className="text-gray-200">1.5.0 Mobile-First</span>
+          <div className="bg-gray-800/50 rounded-xl p-4 text-xs text-gray-400 space-y-3 border border-gray-700/50">
+             <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-white text-xs block">📱 Aplicativo WebApp (PWA)</span>
+                  <span className="text-[10px] text-gray-400">Instale no celular ou computador</span>
+                </div>
+                {onInstallPWA && (
+                  <button
+                    onClick={() => { onClose(); onInstallPWA(); }}
+                    className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-xl text-[11px] uppercase tracking-wider shadow-md transition-all active:scale-95"
+                  >
+                    Instalar
+                  </button>
+                )}
+             </div>
+
+             <div className="flex justify-between border-t border-gray-700/50 pt-2">
+                <span>Versão do Sistema</span>
+                <span className="text-gray-200 font-bold">1.5.0 PWA & Rede Neuronal</span>
               </div>
           </div>
         </div>

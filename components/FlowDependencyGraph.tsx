@@ -115,21 +115,40 @@ export const FlowDependencyGraph: React.FC<FlowDependencyGraphProps> = ({
     const selectedId = selectedNodeRef.current?.id;
     const query = filterQueryRef.current.toLowerCase().trim();
 
-    // 1. Render Links
+    // 1. Render Links with Real-Time Neural Synapse Firing
+    const now = Date.now();
+    const t1 = (now / 1100) % 1;
+    const t2 = ((now / 1100) + 0.5) % 1;
+
     currentLinks.forEach(link => {
       const src = link.source as D3Node;
       const tgt = link.target as D3Node;
       if (src.x == null || src.y == null || tgt.x == null || tgt.y == null) return;
 
+      const isSrcRunning = src.status === NodeStatus.RUNNING;
+
       ctx.save();
       ctx.beginPath();
-      ctx.strokeStyle = '#3b82f6';
-      ctx.globalAlpha = 0.6;
-      ctx.lineWidth = 2.2;
+      ctx.strokeStyle = isSrcRunning ? '#f59e0b' : '#3b82f6';
+      ctx.globalAlpha = isSrcRunning ? 0.95 : 0.5;
+      ctx.lineWidth = isSrcRunning ? 3 : 2;
       ctx.setLineDash([6, 6]);
       ctx.moveTo(src.x, src.y);
       ctx.lineTo(tgt.x, tgt.y);
       ctx.stroke();
+
+      // Synaptic Firing Energy Pulse Particles
+      [t1, t2].forEach(progress => {
+        const px = src.x + (tgt.x - src.x) * progress;
+        const py = src.y + (tgt.y - src.y) * progress;
+
+        ctx.beginPath();
+        ctx.arc(px, py, isSrcRunning ? 5 : 3.5, 0, 2 * Math.PI);
+        ctx.fillStyle = isSrcRunning ? '#fbbf24' : '#60a5fa';
+        ctx.shadowColor = isSrcRunning ? '#f59e0b' : '#3b82f6';
+        ctx.shadowBlur = isSrcRunning ? 15 : 8;
+        ctx.fill();
+      });
 
       // Render Edge Label if present
       if (link.label) {
@@ -322,7 +341,15 @@ export const FlowDependencyGraph: React.FC<FlowDependencyGraphProps> = ({
 
     canvas.addEventListener('click', handleCanvasClick);
 
+    let animFrameId: number;
+    const animLoop = () => {
+      renderCanvas();
+      animFrameId = requestAnimationFrame(animLoop);
+    };
+    animFrameId = requestAnimationFrame(animLoop);
+
     return () => {
+      cancelAnimationFrame(animFrameId);
       observer.disconnect();
       canvas.removeEventListener('click', handleCanvasClick);
       simulation.stop();

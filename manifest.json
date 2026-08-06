@@ -1,0 +1,25 @@
+{
+  "short_name": "Flow Architect",
+  "name": "Flow Architect AI — Automação Visual com IA",
+  "description": "Construa e execute fluxos e grafos neurais de inteligência artificial em tempo real.",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/8637/8637099.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/8637/8637099.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "display": "standalone",
+  "orientation": "any",
+  "scope": "/"
+}

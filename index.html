@@ -19,6 +19,21 @@
     <meta property="twitter:description" content="Construa fluxos inteligentes em segundos. O Flow Architect AI combina um editor visual poderoso com Inteligência Artificial para transformar seus prompts em automações reais." />
     <meta property="twitter:image" content="https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=1200&auto=format&fit=crop" />
 
+    <meta name="theme-color" content="#0d1117" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Flow Architect" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/8637/8637099.png" />
+
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/reactflow/dist/style.css" rel="stylesheet" />
     <script>

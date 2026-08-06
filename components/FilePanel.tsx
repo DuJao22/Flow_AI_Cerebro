@@ -17,7 +17,7 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
   const [learningMessage, setLearningMessage] = useState<string | null>(null);
   const [isLearning, setIsLearning] = useState(false);
 
-  // Helper to extract pure clean HTML from stringified JSON or markdown codeblocks
+  // Helper to extract pure clean HTML and inject auto-playing presentation frame engine
   const getCleanHtmlContent = (content: string): string => {
     if (!content) return '';
     let text = content;
@@ -45,7 +45,154 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
       text = text.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\').replace(/\\t/g, '  ');
     }
 
-    return text.trim();
+    text = text.trim();
+
+    // Se já for HTML e não contiver o script de apresentação, injeta o player automático de frames
+    if ((text.toLowerCase().includes('<html') || text.toLowerCase().includes('<!doctype') || text.toLowerCase().includes('<section') || text.toLowerCase().includes('<div')) && !text.includes('presentation-frame-styles')) {
+      const presentationEngine = `
+<style id="presentation-frame-styles">
+  html, body {
+    margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; overflow: hidden !important;
+    background: #090d16 !important; font-family: system-ui, -apple-system, sans-serif !important;
+  }
+  .frame-slide-wrapper {
+    width: 100vw; height: 100vh; position: relative; overflow: hidden;
+  }
+  .frame-slide-wrapper > section,
+  .frame-slide-wrapper > header,
+  .frame-slide-wrapper > footer,
+  .frame-slide-wrapper > main,
+  .frame-slide-wrapper > div {
+    position: absolute !important; inset: 0 !important; width: 100vw !important; height: 100vh !important;
+    box-sizing: border-box !important; opacity: 0 !important; pointer-events: none !important;
+    transform: scale(0.96) translateY(20px) !important;
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    overflow-y: auto !important; display: flex !important; flex-direction: column !important; justify-content: center !important;
+  }
+  .frame-slide-wrapper > .active-frame-slide {
+    opacity: 1 !important; pointer-events: auto !important; transform: scale(1) translateY(0) !important; z-index: 10 !important;
+  }
+  #presentation-controls {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    z-index: 999999; display: flex; items-center: center; gap: 12px;
+    background: rgba(13, 17, 23, 0.88); backdrop-filter: blur(16px);
+    padding: 8px 18px; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.7); color: white; font-family: monospace; font-size: 12px;
+  }
+  #presentation-controls button {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+    color: white; border-radius: 9999px; padding: 6px 14px; font-weight: bold;
+    cursor: pointer; transition: all 0.2s; font-size: 11px;
+  }
+  #presentation-controls button:hover { background: #3b82f6; border-color: #60a5fa; transform: scale(1.05); }
+  .frame-dot {
+    width: 8px; height: 8px; border-radius: 9999px; background: rgba(255,255,255,0.3); transition: all 0.3s;
+  }
+  .frame-dot.active { background: #38bdf8; width: 22px; box-shadow: 0 0 10px #38bdf8; }
+  #frame-progress-bar {
+    position: fixed; top: 0; left: 0; height: 4px; background: linear-gradient(90deg, #3b82f6, #a855f7, #ec4899);
+    z-index: 999999; transition: width 0.1s linear;
+  }
+</style>
+<script id="presentation-frame-script">
+  window.addEventListener('DOMContentLoaded', () => {
+    let body = document.body;
+    let frames = Array.from(body.querySelectorAll('section, header, footer, main, body > div'));
+    if (frames.length <= 1) {
+      frames = Array.from(body.children).filter(el => el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE' && el.id !== 'presentation-controls' && el.id !== 'frame-progress-bar');
+    }
+    if (frames.length === 0) return;
+
+    let wrapper = document.createElement('div');
+    wrapper.className = 'frame-slide-wrapper';
+    frames.forEach(f => wrapper.appendChild(f));
+    body.appendChild(wrapper);
+
+    let progress = document.createElement('div');
+    progress.id = 'frame-progress-bar';
+    body.appendChild(progress);
+
+    let controls = document.createElement('div');
+    controls.id = 'presentation-controls';
+    controls.innerHTML = \`
+      <button id="prev-frame-btn">◀ Ant</button>
+      <button id="pause-frame-btn">⏸ Pausa</button>
+      <div id="frame-dots" style="display:flex; gap:6px; align-items:center;"></div>
+      <button id="next-frame-btn">Próx ▶</button>
+      <span id="frame-counter" style="color:#a855f7; font-weight:bold; margin-left:4px;">1/\${frames.length}</span>
+    \`;
+    body.appendChild(controls);
+
+    let dotsContainer = document.getElementById('frame-dots');
+    frames.forEach((_, idx) => {
+      let dot = document.createElement('div');
+      dot.className = 'frame-dot' + (idx === 0 ? ' active' : '');
+      dotsContainer.appendChild(dot);
+    });
+
+    let current = 0;
+    let isPlaying = true;
+    let intervalTime = 4500;
+    let timer = null;
+    let progressInterval = null;
+    let startTime = Date.now();
+
+    function showFrame(index) {
+      current = (index + frames.length) % frames.length;
+      frames.forEach((f, i) => {
+        if (i === current) f.classList.add('active-frame-slide');
+        else f.classList.remove('active-frame-slide');
+      });
+
+      Array.from(dotsContainer.children).forEach((d, i) => {
+        if (i === current) d.classList.add('active');
+        else d.classList.remove('active');
+      });
+
+      document.getElementById('frame-counter').innerText = (current + 1) + '/' + frames.length;
+      resetTimer();
+    }
+
+    function resetTimer() {
+      clearInterval(timer);
+      clearInterval(progressInterval);
+      progress.style.width = '0%';
+      if (!isPlaying) return;
+
+      startTime = Date.now();
+      progressInterval = setInterval(() => {
+        let elapsed = Date.now() - startTime;
+        let pct = Math.min(100, (elapsed / intervalTime) * 100);
+        progress.style.width = pct + '%';
+      }, 50);
+
+      timer = setInterval(() => {
+        showFrame(current + 1);
+      }, intervalTime);
+    }
+
+    document.getElementById('prev-frame-btn').onclick = () => showFrame(current - 1);
+    document.getElementById('next-frame-btn').onclick = () => showFrame(current + 1);
+
+    let pauseBtn = document.getElementById('pause-frame-btn');
+    pauseBtn.onclick = () => {
+      isPlaying = !isPlaying;
+      pauseBtn.innerText = isPlaying ? '⏸ Pausa' : '▶ Play';
+      resetTimer();
+    };
+
+    showFrame(0);
+  });
+</script>
+`;
+      if (text.includes('</body>')) {
+        text = text.replace('</body>', `${presentationEngine}</body>`);
+      } else {
+        text += presentationEngine;
+      }
+    }
+
+    return text;
   };
 
   const downloadFile = (file: GeneratedFile) => {
