@@ -319,7 +319,12 @@ export class FlowEngine {
             }
 
             const memories = brainService.getMemories();
-            this.addLog(createLog(node.id, label, 'INFO', `🧠 Cérebro consultando ${memories.length} memórias aprendidas...`));
+            this.addLog(createLog(node.id, label, 'INFO', `🧠 [CIRCUITO REDE NEURAL] Ativando cérebro com ${memories.length} memórias em sinapse...`));
+
+            memories.forEach((mem, idx) => {
+              const snippet = mem.content.length > 90 ? mem.content.substring(0, 87) + '...' : mem.content;
+              this.addLog(createLog(node.id, label, 'INFO', `⚡ [SINAPSE ${idx + 1}/${memories.length}] Consultando aprendizado: "${snippet}"`));
+            });
 
             const ai = new GoogleGenAI({ apiKey: activeKey });
             const memoriesText = brainService.getFormattedContext();

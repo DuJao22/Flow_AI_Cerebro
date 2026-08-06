@@ -311,25 +311,20 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
                   onClick={() => {
                     setSelectedFile(file);
                     setPreviewMode('preview');
-                    setIsFullscreen(false);
+                    setIsFullscreen(isHtml ? true : false);
                   }}
-                  className="flex-1 bg-gray-800 hover:bg-gray-750 text-gray-200 hover:text-white text-[11px] font-sans font-bold py-1.5 px-3 rounded-lg border border-gray-700 transition-all flex items-center justify-center gap-1.5"
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[11px] font-sans font-bold py-2 px-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 active:scale-95"
                 >
-                  👁️ Ver {isHtml ? 'HTML / Preview' : 'Conteúdo'}
+                  🖥️ Visualizar em Tela Cheia {isHtml ? '(HTML)' : ''}
                 </button>
 
-                {isHtml && (
-                  <button
-                    onClick={() => {
-                      setSelectedFile(file);
-                      setPreviewMode('preview');
-                      setIsFullscreen(true);
-                    }}
-                    className="flex-1 bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-sans font-bold py-1.5 px-3 rounded-lg transition-all shadow-md shadow-purple-900/30 flex items-center justify-center gap-1.5 active:scale-95"
-                  >
-                    🖥️ Modo Tela Cheia
-                  </button>
-                )}
+                <button
+                  onClick={() => handleOpenNewTab(file)}
+                  className="bg-gray-800 hover:bg-gray-700 text-gray-200 text-[11px] font-sans font-bold py-2 px-3 rounded-xl border border-gray-700 transition-all flex items-center justify-center gap-1"
+                  title="Abrir diretamente em nova aba do navegador"
+                >
+                  🔗 Nova Aba
+                </button>
               </div>
             </div>
           );
@@ -537,15 +532,19 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
             </div>
           </div>
 
-          {/* PALCO IFRAME TELA CHEIA */}
-          <div className="flex-1 bg-gray-900 flex items-center justify-center p-0 md:p-4 overflow-hidden relative">
+          {/* PALCO IFRAME TELA CHEIA RESPONSIVO */}
+          <div className={`flex-1 bg-gray-950 flex items-center justify-center overflow-hidden relative ${deviceWidth === '100%' ? 'p-0' : 'p-2 md:p-6 bg-gray-900/90'}`}>
             <div 
               style={{ width: deviceWidth }} 
-              className="h-full max-h-full bg-white transition-all duration-300 shadow-2xl md:rounded-2xl overflow-hidden border border-gray-800 relative"
+              className={`h-full max-h-full bg-white transition-all duration-300 relative ${
+                deviceWidth === '100%' 
+                  ? 'w-full h-full rounded-none border-none shadow-none' 
+                  : 'shadow-2xl rounded-2xl border-2 border-purple-500/30 overflow-hidden'
+              }`}
             >
               <iframe
                 srcDoc={getCleanHtmlContent(selectedFile.content)}
-                title="Landing Page Fullscreen Preview"
+                title="Landing Page Responsive Fullscreen Preview"
                 className="w-full h-full border-none"
                 sandbox="allow-scripts allow-modals allow-same-origin"
               />

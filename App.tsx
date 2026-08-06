@@ -233,24 +233,24 @@ const App = () => {
     <ReactFlowProvider>
       <div className="flex h-[100dvh] w-screen overflow-hidden flex-col bg-gray-950 text-white select-none">
         
-        {/* HEADER EXECUTIVO GLASSMORPHIC */}
-        <header className="h-14 bg-gray-950/90 backdrop-blur-xl border-b border-gray-800/80 flex items-center justify-between px-3 md:px-5 shrink-0 z-40 shadow-2xl pt-[env(safe-area-inset-top)]">
+        {/* HEADER EXECUTIVO COMPACTO MOBILE-FIRST */}
+        <header className="min-h-[3.5rem] bg-gray-950/95 backdrop-blur-2xl border-b border-gray-800/80 flex items-center justify-between px-2.5 sm:px-4 py-1.5 shrink-0 z-40 shadow-2xl pt-[env(safe-area-inset-top)] gap-2 overflow-x-auto scrollbar-none">
           
           {/* LADO ESQUERDO: BRANDING & PROJETO */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center font-black text-sm text-white shadow-lg shadow-indigo-950/80 border border-blue-400/30">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center font-black text-xs sm:text-sm text-white shadow-md border border-blue-400/30 shrink-0">
                   F
                 </div>
                 <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <h1 className="font-black text-xs md:text-sm tracking-wider uppercase bg-gradient-to-r from-white via-gray-100 to-gray-400 bg-clip-text text-transparent leading-none">
+                    <div className="flex items-center gap-1.5">
+                      <h1 className="font-black text-[11px] sm:text-xs md:text-sm tracking-wider uppercase bg-gradient-to-r from-white via-gray-100 to-gray-400 bg-clip-text text-transparent leading-none whitespace-nowrap">
                         {APP_NAME}
                       </h1>
-                      <span className="hidden sm:inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+                      <span className="hidden md:inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
                     </div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[9px] font-mono text-purple-300 bg-purple-950/80 px-2 py-0.2 rounded-full border border-purple-700/50 font-bold truncate max-w-[110px]">
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[8px] sm:text-[9px] font-mono text-purple-300 bg-purple-950/90 px-1.5 py-0.2 rounded-full border border-purple-700/50 font-bold truncate max-w-[85px] sm:max-w-[120px]">
                         {currentProject?.name || 'Projeto Ativo'}
                       </span>
                     </div>
@@ -258,11 +258,11 @@ const App = () => {
             </div>
 
             {/* DESKTOP VIEW TOGGLES SEGMENTED CONTROL */}
-            <div className="hidden lg:flex items-center bg-gray-900/90 border border-gray-800/90 p-1 rounded-xl ml-4 gap-1">
+            <div className="hidden lg:flex items-center bg-gray-900/90 border border-gray-800 p-0.5 rounded-xl ml-2 gap-0.5">
                 <button 
                     onClick={() => setShowDesktopLogs(!showDesktopLogs)}
-                    className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 ${
-                      showDesktopLogs ? 'bg-purple-900/60 text-purple-200 border border-purple-700/50 shadow-sm' : 'text-gray-400 hover:text-white'
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 ${
+                      showDesktopLogs ? 'bg-purple-900/70 text-purple-200 border border-purple-700/50 shadow-sm' : 'text-gray-400 hover:text-white'
                     }`}
                     title="Alternar Terminal de Logs"
                 >
@@ -271,8 +271,8 @@ const App = () => {
                 </button>
                 <button 
                     onClick={() => setShowDesktopChat(!showDesktopChat)}
-                    className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 ${
-                      showDesktopChat ? 'bg-blue-900/60 text-blue-200 border border-blue-700/50 shadow-sm' : 'text-gray-400 hover:text-white'
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 ${
+                      showDesktopChat ? 'bg-blue-900/70 text-blue-200 border border-blue-700/50 shadow-sm' : 'text-gray-400 hover:text-white'
                     }`}
                     title="Alternar Copiloto IA Chat"
                 >
@@ -282,47 +282,47 @@ const App = () => {
             </div>
           </div>
           
-          {/* LADO DIREITO: DOCK DE AÇÕES E BOTÃO PRINCIPAL */}
-          <div className="flex items-center gap-2">
-             <div className="hidden xl:block">
+          {/* LADO DIREITO: DOCK DE AÇÕES EM GRID/FLEX COMPACTO SEM OVERFLOW */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+             <div className="hidden 2xl:block">
                  <KeyStatusPanel />
              </div>
 
              {/* BOTÃO INSTALAR PWA WEBAPP */}
              <button
                 onClick={handleInstallPWA}
-                className="flex items-center gap-1.5 px-2.5 md:px-3.5 h-9 rounded-xl bg-gradient-to-r from-teal-900/80 to-emerald-900/80 hover:from-teal-800 hover:to-emerald-800 text-teal-200 hover:text-white font-bold text-xs transition-all border border-teal-500/40 shadow-lg shadow-teal-950/30 active:scale-95 shrink-0"
-                title="Instalar WebApp no Celular / PC"
+                className="flex items-center gap-1 px-2 sm:px-2.5 h-8 rounded-lg bg-teal-950/90 hover:bg-teal-900 text-teal-200 hover:text-white font-bold text-[10px] sm:text-xs transition-all border border-teal-600/50 shadow-md active:scale-95 shrink-0"
+                title="Instalar WebApp no Celular ou PC"
              >
-                <span className="text-sm">📱</span>
-                <span className="hidden sm:inline font-mono text-[11px] uppercase tracking-wider">Instalar App</span>
+                <span className="text-xs">📱</span>
+                <span className="hidden xs:inline font-mono uppercase tracking-tight">App</span>
              </button>
 
              {/* BOTÃO CÉREBRO IA */}
              <button 
                 onClick={() => setIsBrainModalOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 md:px-3.5 h-9 rounded-xl bg-purple-950/80 hover:bg-purple-900/90 text-purple-200 hover:text-white transition-all border border-purple-700/60 shadow-lg shadow-purple-950/40 active:scale-95 font-bold text-xs shrink-0"
-                title="Cérebro de IA & Aprendizado Continuo"
+                className="flex items-center gap-1 px-2 sm:px-2.5 h-8 rounded-lg bg-purple-950/90 hover:bg-purple-900 text-purple-200 hover:text-white transition-all border border-purple-600/50 shadow-md active:scale-95 font-bold text-[10px] sm:text-xs shrink-0"
+                title="Cérebro de IA & Aprendizado Contínuo"
              >
-                <span className="text-sm animate-pulse">🧠</span>
-                <span className="hidden sm:inline font-mono text-[11px] uppercase tracking-wider">Cérebro IA</span>
+                <span className="text-xs animate-pulse">🧠</span>
+                <span className="hidden xs:inline font-mono uppercase tracking-tight">Cérebro</span>
              </button>
              
-             {/* PAINEL DE FERRAMENTAS / SETTINGS / IMPORT */}
-             <div className="flex items-center bg-gray-900/90 border border-gray-800 p-0.5 rounded-xl gap-0.5">
+             {/* DOCK DE FERRAMENTAS (JSON / SAVE / SETTINGS) */}
+             <div className="flex items-center bg-gray-900/90 border border-gray-800 p-0.5 rounded-lg gap-0.5 shrink-0">
                {/* JSON / IMPORTER */}
                <button 
                   onClick={() => setIsJsonModalOpen(true)}
-                  className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+                  className="flex items-center justify-center w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
                   title="Editor JSON / Importar"
                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
                </button>
 
                {/* SALVAR PROJETO */}
                <button 
                   onClick={handleSaveProject}
-                  className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all ${
+                  className={`flex items-center justify-center w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-md transition-all ${
                       saveStatus === 'saved' ? 'bg-green-600/30 text-green-400 border border-green-500/50' :
                       saveStatus === 'saving' ? 'bg-blue-600/30 text-blue-400 border border-blue-500/50 animate-pulse' :
                       'hover:bg-gray-800 text-gray-400 hover:text-white'
@@ -330,19 +330,19 @@ const App = () => {
                   title="Salvar Estado do Projeto"
                >
                   {saveStatus === 'saved' ? (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                   ) : (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
                   )}
                </button>
 
                {/* CONFIGURAÇÕES */}
                <button 
                   onClick={() => setIsSettingsOpen(true)}
-                  className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+                  className="flex items-center justify-center w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
                   title="Configurações e Chaves Gemini"
                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                </button>
              </div>
 
@@ -350,22 +350,22 @@ const App = () => {
              <button 
                 onClick={handleRunFlow} 
                 disabled={isExecuting}
-                className={`flex items-center gap-2 px-3.5 h-9 rounded-xl transition-all font-black text-xs uppercase tracking-wider ${
+                className={`flex items-center gap-1 px-2.5 sm:px-3 h-8 rounded-lg transition-all font-black text-[11px] sm:text-xs uppercase tracking-wider shrink-0 ${
                   isExecuting 
                     ? 'bg-blue-950 border border-blue-700/50 text-blue-300 animate-pulse' 
-                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-950/60 active:scale-95 border border-blue-400/30'
+                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md active:scale-95 border border-blue-400/30'
                 }`}
                 title="Executar Automação do Fluxo"
              >
                 {isExecuting ? (
                   <>
-                    <div className="w-3.5 h-3.5 border-2 border-blue-300 border-t-transparent animate-spin rounded-full" />
-                    <span className="hidden sm:inline text-[10px]">Executando...</span>
+                    <div className="w-3 h-3 border-2 border-blue-300 border-t-transparent animate-spin rounded-full" />
+                    <span className="hidden xs:inline text-[9px]">Executando</span>
                   </>
                 ) : (
                   <>
-                    <svg className="w-4 h-4 fill-white" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 001.664l-3-2z"/></svg>
-                    <span className="hidden sm:inline">Executar</span>
+                    <svg className="w-3.5 h-3.5 fill-white" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 001.664l-3-2z"/></svg>
+                    <span>Play</span>
                   </>
                 )}
              </button>
