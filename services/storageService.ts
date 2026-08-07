@@ -28,14 +28,36 @@ export const storageService = {
     };
 
     const updatedProjects = [newProject, ...projects];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProjects));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProjects));
+    } catch (e) {
+      console.warn("QuotaExceededError ao salvar projeto. Otimizando tamanho dos arquivos salvos:", e);
+      try {
+        const lightweightProjects = updatedProjects.map(p => ({
+          ...p,
+          files: p.files.map(f => ({
+            ...f,
+            content: f.content.length > 25000 
+              ? f.content.substring(0, 25000) + '\n<!-- [CONTEÚDO COMPACTADO NO ARMAZENAMENTO LOCAL] -->' 
+              : f.content
+          }))
+        }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(lightweightProjects));
+      } catch (e2) {
+        console.error("Erro crítico ao salvar no LocalStorage:", e2);
+      }
+    }
     return newProject;
   },
 
   deleteProject: (id: string): void => {
     const projects = storageService.getProjects();
     const filtered = projects.filter(p => p.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    } catch (e) {
+      console.error("Erro ao atualizar lista de projetos após exclusão:", e);
+    }
   },
 
   updateProject: (id: string, nodes: FlowNode[], edges: FlowEdge[], files: GeneratedFile[]): void => {
@@ -50,7 +72,25 @@ export const storageService = {
         files,
         updatedAt: Date.now()
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+      } catch (e) {
+        console.warn("QuotaExceededError ao atualizar projeto. Otimizando arquivos:", e);
+        try {
+          const lightweightProjects = projects.map(p => ({
+            ...p,
+            files: p.files.map(f => ({
+              ...f,
+              content: f.content.length > 25000 
+                ? f.content.substring(0, 25000) + '\n<!-- [CONTEÚDO COMPACTADO NO ARMAZENAMENTO LOCAL] -->' 
+                : f.content
+            }))
+          }));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(lightweightProjects));
+        } catch (e2) {
+          console.error("Erro crítico ao atualizar projeto no LocalStorage:", e2);
+        }
+      }
     }
   }
 };

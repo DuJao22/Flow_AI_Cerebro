@@ -314,10 +314,6 @@ export class FlowEngine {
             const currentInput = this.context['input'] || {};
             const activeKey = await brainService.getEffectiveApiKey();
 
-            if (!activeKey) {
-              throw new Error("Nenhuma chave Gemini disponível no pool para o Cérebro de IA.");
-            }
-
             const memories = brainService.getMemories();
             this.addLog(createLog(node.id, label, 'INFO', `🧠 [CIRCUITO REDE NEURAL] Ativando cérebro com ${memories.length} memórias em sinapse...`));
 
@@ -326,10 +322,15 @@ export class FlowEngine {
               this.addLog(createLog(node.id, label, 'INFO', `⚡ [SINAPSE ${idx + 1}/${memories.length}] Consultando aprendizado: "${snippet}"`));
             });
 
-            const ai = new GoogleGenAI({ apiKey: activeKey });
-            const memoriesText = brainService.getFormattedContext();
+            let parsedBrainResult: any = null;
+            let rawBrainText = '';
 
-            const promptText = `
+            if (activeKey) {
+              try {
+                const ai = new GoogleGenAI({ apiKey: activeKey });
+                const memoriesText = brainService.getFormattedContext();
+
+                const promptText = `
 Você é o Cérebro de Aprendizado IA responsável por executar esta etapa do fluxo de automação.
 REGRAS E MEMÓRIAS ACUMULADAS:
 ${memoriesText}
@@ -341,35 +342,97 @@ SUA DIRETIVA / TAREFA:
 ${directive}
 
 OBSERVAÇÃO IMPORTANTE PARA GERAGÃO DE CÓDIGO HTML / PÁGINAS:
-Se esta tarefa envolver a criação ou geração de código HTML / Landing Page / Apresentação, você DEVE estruturar o conteúdo em FRAMES DE APRESENTAÇÃO DE TELA CHEIA (<section class="frame-slide"> ou blocos de 100vh) que são visualizados como slides sequenciais, sem necessidade de rolagem vertical exaustiva.
+Se esta tarefa envolver a criação ou geração de código HTML / Landing Page / Apresentação, você DEVE gerar um código HTML5 completo, limpo, totalmente responsivo, utilizando Tailwind CSS e componentes semânticos de alta conversão.
 
 Forneça uma resposta clara, estruturada e diretamente útil contendo sua decisão/resultado.
-            `;
+                `;
 
-            const brainResponse = await ai.models.generateContent({
-              model: 'gemini-3.6-flash',
-              contents: [{ role: 'user', parts: [{ text: promptText }] }],
-              config: { temperature: 0.2 }
-            });
+                const brainResponse = await ai.models.generateContent({
+                  model: 'gemini-3.6-flash',
+                  contents: [{ role: 'user', parts: [{ text: promptText }] }],
+                  config: { temperature: 0.2 }
+                });
 
-            const brainText = brainResponse.text || '';
-            let parsedBrainResult: any = brainText;
+                rawBrainText = brainResponse.text || '';
+                parsedBrainResult = rawBrainText;
 
-            try {
-              const jsonMatch = brainText.match(/\{[\s\S]*\}/);
-              if (jsonMatch) {
-                parsedBrainResult = JSON.parse(jsonMatch[0]);
+                try {
+                  const jsonMatch = rawBrainText.match(/\{[\s\S]*\}/);
+                  if (jsonMatch) {
+                    parsedBrainResult = JSON.parse(jsonMatch[0]);
+                  }
+                } catch (e) {
+                  // Mantém texto
+                }
+              } catch (aiErr: any) {
+                console.warn("[Brain Engine] Erro na requisição Gemini, ativando Sintetizador Autônomo Local:", aiErr);
+                this.addLog(createLog(node.id, label, 'WARN', `⚡ [SINTETIZADOR AUTÔNOMO LOCAL] Falha na API externa. Sintetizando Landing Page com base nos padrões do Cérebro...`));
+                parsedBrainResult = brainService.synthesizeOfflineLandingPage(directive, currentInput);
+                rawBrainText = typeof parsedBrainResult === 'string' ? parsedBrainResult : JSON.stringify(parsedBrainResult);
               }
-            } catch (e) {
-              // Mantém texto puro
+            } else {
+              this.addLog(createLog(node.id, label, 'WARN', `⚡ [SINTETIZADOR AUTÔNOMO LOCAL] Sem chave de IA externa. Ativando síntese local do Cérebro de alta conversão...`));
+              parsedBrainResult = brainService.synthesizeOfflineLandingPage(directive, currentInput);
+              rawBrainText = typeof parsedBrainResult === 'string' ? parsedBrainResult : JSON.stringify(parsedBrainResult);
             }
 
             this.context[node.id] = parsedBrainResult;
             this.context['input'] = parsedBrainResult;
 
+            // --- DETECÇÃO E SALVAMENTO AUTÔNOMO DE ARQUIVO HTML PELO CÉREBRO ---
+            let htmlContentToSave = '';
+
+            if (typeof parsedBrainResult === 'string') {
+              const codeBlockMatch = parsedBrainResult.match(/```html\s*([\s\S]*?)\s*```/i);
+              if (codeBlockMatch) {
+                htmlContentToSave = codeBlockMatch[1].trim();
+              } else {
+                const htmlStart = parsedBrainResult.search(/<!DOCTYPE html|<html/i);
+                const htmlEnd = parsedBrainResult.search(/<\/html>/i);
+                if (htmlStart !== -1 && htmlEnd !== -1) {
+                  htmlContentToSave = parsedBrainResult.substring(htmlStart, htmlEnd + 7).trim();
+                } else if (parsedBrainResult.includes('<html') || parsedBrainResult.includes('<!DOCTYPE html>')) {
+                  htmlContentToSave = parsedBrainResult.trim();
+                }
+              }
+            } else if (parsedBrainResult && typeof parsedBrainResult === 'object') {
+              if (parsedBrainResult.html) htmlContentToSave = String(parsedBrainResult.html).trim();
+              else if (parsedBrainResult.code) htmlContentToSave = String(parsedBrainResult.code).trim();
+              else if (parsedBrainResult.content) htmlContentToSave = String(parsedBrainResult.content).trim();
+            }
+
+            if (htmlContentToSave) {
+              // Sanidade estrita: se vazou prompt ou texto de requisitos
+              if (htmlContentToSave.toUpperCase().includes('TEXT:REQUISITOS') || 
+                  htmlContentToSave.toUpperCase().includes('REQUISITOS OBRIGATORIOS DE RESPONSIVIDADE') ||
+                  (!htmlContentToSave.includes('<!DOCTYPE html>') && !htmlContentToSave.includes('<html'))) {
+                htmlContentToSave = brainService.synthesizeOfflineLandingPage(directive, currentInput);
+              }
+
+              let fileName = config?.fileName || `landing_page_${Date.now().toString().slice(-4)}.html`;
+              if (!fileName.toLowerCase().endsWith('.html')) fileName += '.html';
+
+              const newFile: GeneratedFile = {
+                id: `file-${Date.now()}`,
+                name: fileName,
+                type: 'html',
+                content: htmlContentToSave,
+                createdAt: Date.now(),
+                size: `${(htmlContentToSave.length / 1024).toFixed(1)} KB`
+              };
+
+              this.onFileGenerated(newFile);
+              this.addLog(createLog(node.id, label, 'SUCCESS', `💾 [AUTOSSALVAMENTO DO CÉREBRO] Arquivo HTML gerado e salvo em 'Arquivos': ${fileName}`));
+
+              // Absorve aprendizado do HTML gerado
+              brainService.learnFromLandingPage(fileName, htmlContentToSave).then((insight) => {
+                this.addLog(createLog(node.id, label, 'INFO', `💡 Cérebro aprendeu com a página gerada: "${insight}"`));
+              });
+            }
+
             // Aprendizado automático opcional
-            if (config?.autoLearn) {
-              const learnPrompt = `Analise a execução recente e extraia 1 nova regra ou insight curto para o Cérebro aprender. Se não houver nada novo a aprender, responda APENAS "NADA". Texto: ${brainText}`;
+            if (config?.autoLearn && activeKey && rawBrainText) {
+              const learnPrompt = `Analise a execução recente e extraia 1 nova regra ou insight curto para o Cérebro aprender. Se não houver nada novo a aprender, responda APENAS "NADA". Texto: ${rawBrainText}`;
               try {
                 const learnRes = await ai.models.generateContent({
                   model: 'gemini-3.6-flash',

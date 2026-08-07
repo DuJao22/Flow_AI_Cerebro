@@ -437,119 +437,193 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL TELA CHEIA (FULLSCREEN VIEWPORT) */}
+      {/* MODAL TELA CHEIA SIMULADOR DE NAVEGADOR (FULLSCREEN BROWSER SIMULATION) */}
       {/* ========================================================================= */}
       {selectedFile && isFullscreen && createPortal(
-        <div className="fixed inset-0 z-[99999] bg-gray-950 flex flex-col w-screen h-screen overflow-hidden animate-fade-in">
+        <div className="fixed inset-0 z-[99999] bg-gray-950 flex flex-col w-screen h-screen overflow-hidden animate-fade-in select-none">
           
-          {/* TOOLBAR EM TELA CHEIA */}
-          <div className="h-14 bg-gray-900 border-b border-gray-800 px-4 flex items-center justify-between shrink-0 select-none">
+          {/* BARRA SUPERIOR DO NAVEGADOR SIMULADO */}
+          <div className="bg-gray-900 border-b border-gray-800 p-2.5 flex flex-col gap-2 shrink-0">
             
-            {/* LADO ESQUERDO: NOME DO ARQUIVO & BADGE */}
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center text-white font-bold text-xs shadow-md">
-                🖥️
+            {/* LINHA 1: CONTROLES DA JANELA, CONTROLES DE NAVEGAÇÃO E ENDEREÇO URL */}
+            <div className="flex items-center gap-2 sm:gap-3 justify-between">
+              
+              {/* LADO ESQUERDO: DOTS + BOTÕES NAVEGAÇÃO */}
+              <div className="flex items-center gap-2 shrink-0">
+                {/* WINDOW DOTS */}
+                <div className="hidden sm:flex items-center gap-1.5 mr-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500/80 cursor-pointer hover:bg-red-500 transition-colors" onClick={() => setIsFullscreen(false)} title="Fechar" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                  <div className="w-3 h-3 rounded-full bg-green-500/80" onClick={() => setDeviceWidth('100%')} title="Tela Cheia" />
+                </div>
+
+                {/* BOTÕES NAVEGAÇÃO NAVEGADOR */}
+                <div className="flex items-center gap-1 bg-gray-950/80 p-1 rounded-lg border border-gray-800">
+                  <button className="p-1 hover:bg-gray-800 rounded text-gray-400 hover:text-white transition-colors" title="Voltar">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  </button>
+                  <button className="p-1 hover:bg-gray-800 rounded text-gray-400 hover:text-white transition-colors" title="Avançar">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      // Recarrega iframe
+                      const iframe = document.getElementById('fullscreen-preview-iframe') as HTMLIFrameElement;
+                      if (iframe) iframe.srcdoc = getCleanHtmlContent(selectedFile.content);
+                    }} 
+                    className="p-1 hover:bg-gray-800 rounded text-gray-400 hover:text-white transition-colors" 
+                    title="Recarregar Página"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  </button>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xs font-bold text-white font-sans flex items-center gap-2">
-                  {selectedFile.name}
-                  <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono">
-                    TELA CHEIA
+
+              {/* BARRA DE ENDEREÇO SIMULADA (URL BAR) */}
+              <div className="flex-1 max-w-2xl bg-gray-950 border border-gray-800 rounded-xl px-3 py-1.5 flex items-center justify-between gap-2 shadow-inner">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <span className="text-emerald-400 text-xs shrink-0" title="Conexão Segura SSL">🔒</span>
+                  <span className="text-xs text-gray-400 font-mono truncate select-all">
+                    https://preview.local/app/<span className="text-purple-300 font-bold">{selectedFile.name}</span>
                   </span>
-                </h2>
-                <span className="text-[10px] text-gray-400 font-mono">Visualização em Tempo Real de Landing Page</span>
+                </div>
+                <button
+                  onClick={() => handleOpenNewTab(selectedFile)}
+                  className="text-[10px] bg-purple-900/60 hover:bg-purple-800 text-purple-200 border border-purple-700/50 px-2 py-0.5 rounded-md font-sans font-bold shrink-0 transition-colors flex items-center gap-1"
+                  title="Abrir em aba real do navegador"
+                >
+                  <span>🔗</span> <span className="hidden xs:inline">Nova Aba Real</span>
+                </button>
               </div>
+
+              {/* LADO DIREITO: BOTÕES DE MODO E FECHAR */}
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="flex bg-gray-950 border border-gray-800 p-0.5 rounded-lg">
+                  <button
+                    onClick={() => setPreviewMode('preview')}
+                    className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${
+                      previewMode === 'preview' ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    🌐 Live Preview
+                  </button>
+                  <button
+                    onClick={() => setPreviewMode('code')}
+                    className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${
+                      previewMode === 'code' ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    💻 Código
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setIsFullscreen(false)}
+                  className="bg-red-600/90 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1"
+                >
+                  ✕ <span className="hidden md:inline">Sair</span>
+                </button>
+              </div>
+
             </div>
 
-            {/* CENTRO: SELETORES DE DISPOSITIVO */}
-            <div className="hidden md:flex items-center bg-gray-950 border border-gray-800 rounded-xl p-1 gap-1">
-              <button
-                onClick={() => setDeviceWidth('100%')}
-                className={`px-3 py-1 text-xs font-sans font-bold rounded-lg transition-all flex items-center gap-1.5 ${
-                  deviceWidth === '100%' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                🖥️ Desktop
-              </button>
-              <button
-                onClick={() => setDeviceWidth('1024px')}
-                className={`px-3 py-1 text-xs font-sans font-bold rounded-lg transition-all flex items-center gap-1.5 ${
-                  deviceWidth === '1024px' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                💻 Laptop
-              </button>
-              <button
-                onClick={() => setDeviceWidth('768px')}
-                className={`px-3 py-1 text-xs font-sans font-bold rounded-lg transition-all flex items-center gap-1.5 ${
-                  deviceWidth === '768px' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                📱 Tablet
-              </button>
-              <button
-                onClick={() => setDeviceWidth('375px')}
-                className={`px-3 py-1 text-xs font-sans font-bold rounded-lg transition-all flex items-center gap-1.5 ${
-                  deviceWidth === '375px' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                📱 Mobile
-              </button>
+            {/* LINHA 2: CONTROLES DE DISPOSITIVO / RESPONSIVIDADE E APRENDIZADO CÉREBRO */}
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-800/60 overflow-x-auto scrollbar-none">
+              
+              {/* SELETORES DE VIEWPORT DE DISPOSITIVO */}
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-bold text-gray-500 uppercase font-mono mr-1 hidden sm:inline">Modo:</span>
+                <button
+                  onClick={() => setDeviceWidth('100%')}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 ${
+                    deviceWidth === '100%' ? 'bg-purple-600 text-white shadow-sm' : 'bg-gray-950 text-gray-400 hover:text-white border border-gray-800'
+                  }`}
+                >
+                  🖥️ Desktop <span className="text-[9px] opacity-70">(100%)</span>
+                </button>
+                <button
+                  onClick={() => setDeviceWidth('1024px')}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 ${
+                    deviceWidth === '1024px' ? 'bg-purple-600 text-white shadow-sm' : 'bg-gray-950 text-gray-400 hover:text-white border border-gray-800'
+                  }`}
+                >
+                  💻 Laptop <span className="text-[9px] opacity-70">(1024px)</span>
+                </button>
+                <button
+                  onClick={() => setDeviceWidth('768px')}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 ${
+                    deviceWidth === '768px' ? 'bg-purple-600 text-white shadow-sm' : 'bg-gray-950 text-gray-400 hover:text-white border border-gray-800'
+                  }`}
+                >
+                  📱 Tablet <span className="text-[9px] opacity-70">(768px)</span>
+                </button>
+                <button
+                  onClick={() => setDeviceWidth('375px')}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 ${
+                    deviceWidth === '375px' ? 'bg-purple-600 text-white shadow-sm' : 'bg-gray-950 text-gray-400 hover:text-white border border-gray-800'
+                  }`}
+                >
+                  📱 Mobile <span className="text-[9px] opacity-70">(375px)</span>
+                </button>
+              </div>
+
+              {/* AÇÕES ADICIONAIS: APRENDIZADO CÉREBRO & DOWNLOAD */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => handleAbsorbLearning(selectedFile)}
+                  disabled={isLearning}
+                  className="bg-purple-950 hover:bg-purple-900 text-purple-200 border border-purple-700/60 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all shadow-sm flex items-center gap-1"
+                >
+                  🧠 <span className="hidden sm:inline">Absorver no Cérebro</span>
+                </button>
+
+                <button
+                  onClick={() => downloadFile(selectedFile)}
+                  className="bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1"
+                  title="Baixar HTML UTF-8"
+                >
+                  ⬇️ Baixar
+                </button>
+              </div>
+
             </div>
 
-            {/* LADO DIREITO: AÇÕES */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleAbsorbLearning(selectedFile)}
-                disabled={isLearning}
-                className="hidden sm:flex items-center gap-1.5 bg-purple-900/80 hover:bg-purple-800 text-purple-200 border border-purple-700/60 px-3 py-1.5 rounded-xl text-xs font-sans font-bold transition-all shadow-md"
-              >
-                🧠 Extrair Aprendizado
-              </button>
-
-              <button
-                onClick={() => handleOpenNewTab(selectedFile)}
-                className="bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 px-3 py-1.5 rounded-xl text-xs font-sans font-bold transition-colors flex items-center gap-1"
-                title="Abrir em Nova Aba do Navegador"
-              >
-                🔗 Nova Aba
-              </button>
-
-              <button
-                onClick={() => downloadFile(selectedFile)}
-                className="bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 px-3 py-1.5 rounded-xl text-xs font-sans font-bold transition-colors"
-                title="Baixar HTML"
-              >
-                ⬇️
-              </button>
-
-              <button
-                onClick={() => setIsFullscreen(false)}
-                className="bg-red-600 hover:bg-red-500 text-white px-3.5 py-1.5 rounded-xl text-xs font-sans font-bold transition-all shadow-md"
-              >
-                ✕ Sair da Tela Cheia
-              </button>
-            </div>
           </div>
 
-          {/* PALCO IFRAME TELA CHEIA RESPONSIVO */}
+          {/* PALCO DO NAVEGADOR SIMULADO (VIEWPORT RESPONSIVO) */}
           <div className={`flex-1 bg-gray-950 flex items-center justify-center overflow-hidden relative ${deviceWidth === '100%' ? 'p-0' : 'p-2 md:p-6 bg-gray-900/90'}`}>
             <div 
               style={{ width: deviceWidth }} 
-              className={`h-full max-h-full bg-white transition-all duration-300 relative ${
+              className={`h-full max-h-full transition-all duration-300 relative ${
                 deviceWidth === '100%' 
-                  ? 'w-full h-full rounded-none border-none shadow-none' 
-                  : 'shadow-2xl rounded-2xl border-2 border-purple-500/30 overflow-hidden'
+                  ? 'w-full h-full rounded-none border-none shadow-none bg-white' 
+                  : 'shadow-2xl rounded-2xl border-2 border-purple-500/40 overflow-hidden bg-white'
               }`}
             >
-              <iframe
-                srcDoc={getCleanHtmlContent(selectedFile.content)}
-                title="Landing Page Responsive Fullscreen Preview"
-                className="w-full h-full border-none"
-                sandbox="allow-scripts allow-modals allow-same-origin"
-              />
+              {previewMode === 'preview' ? (
+                <iframe
+                  id="fullscreen-preview-iframe"
+                  srcDoc={getCleanHtmlContent(selectedFile.content)}
+                  title="Landing Page Responsive Fullscreen Browser Simulation"
+                  className="w-full h-full border-none bg-white"
+                  sandbox="allow-scripts allow-modals allow-same-origin"
+                />
+              ) : (
+                <div className="relative h-full bg-gray-950 p-4 overflow-auto">
+                  <button
+                    onClick={() => handleCopyCode(getCleanHtmlContent(selectedFile.content))}
+                    className="absolute top-4 right-4 z-10 bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md"
+                  >
+                    {copied ? '✅ Copiado!' : '📋 Copiar Código HTML'}
+                  </button>
+                  <pre className="text-xs leading-relaxed text-emerald-400 font-mono selection:bg-purple-900 selection:text-white">
+                    {getCleanHtmlContent(selectedFile.content)}
+                  </pre>
+                </div>
+              )}
             </div>
           </div>
+
         </div>,
         document.body
       )}

@@ -3,17 +3,33 @@ import { brainService, BrainMemory } from '../services/brainService';
 import { keyManager } from '../services/keyManager';
 import { GoogleGenAI } from '@google/genai';
 import { BrainKnowledgeGraph } from './BrainKnowledgeGraph';
+import { GeneratedFile } from '../types';
 
 interface BrainModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onFileGenerated?: (file: GeneratedFile) => void;
 }
 
-export const BrainModal: React.FC<BrainModalProps> = ({ isOpen, onClose }) => {
+export const BrainModal: React.FC<BrainModalProps> = ({ isOpen, onClose, onFileGenerated }) => {
   const [memories, setMemories] = useState<BrainMemory[]>([]);
-  const [activeTab, setActiveTab] = useState<'memories' | 'graph' | 'test' | 'config'>('memories');
+  const [activeTab, setActiveTab] = useState<'memories' | 'graph' | 'productLp' | 'test' | 'config'>('memories');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   
+  // Express Product Landing Page Generator State
+  const [productName, setProductName] = useState('');
+  const [productDesc, setProductDesc] = useState('');
+  const [productBenefit, setProductBenefit] = useState('');
+  const [productTarget, setProductTarget] = useState('');
+  const [productStyle, setProductStyle] = useState<'dark' | 'clean' | 'cyberpunk' | 'warm'>('dark');
+  const [fileNameInput, setFileNameInput] = useState('landing_page_produto.html');
+
+  const [isGeneratingLp, setIsGeneratingLp] = useState(false);
+  const [generatedLpContent, setGeneratedLpContent] = useState<string | null>(null);
+  const [lpStatusMessage, setLpStatusMessage] = useState<string | null>(null);
+  const [lpPreviewTab, setLpPreviewTab] = useState<'preview' | 'code'>('preview');
+  const [copiedCode, setCopiedCode] = useState(false);
+
   // Form states for adding memory
   const [newContent, setNewContent] = useState('');
   const [newCategory, setNewCategory] = useState<BrainMemory['category']>('rule');
@@ -40,6 +56,163 @@ export const BrainModal: React.FC<BrainModalProps> = ({ isOpen, onClose }) => {
 
   const loadMemories = () => {
     setMemories(brainService.getMemories());
+  };
+
+  const handleGenerateProductLp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!productName.trim() || !productDesc.trim() || isGeneratingLp) return;
+
+    setIsGeneratingLp(true);
+    setLpStatusMessage("🧠 O Cérebro IA está consultando o banco de memória e gerando a Landing Page...");
+    setGeneratedLpContent(null);
+
+    const activeKey = await brainService.getEffectiveApiKey();
+    let finalHtml = '';
+
+    if (activeKey) {
+      try {
+        const ai = new GoogleGenAI({ apiKey: activeKey });
+        const formattedMemories = brainService.getFormattedContext();
+
+        const styleGuide = productStyle === 'clean'
+          ? 'Estilo Clean Modern: Fundo claro (#f8fafc), acentos azul/índigo, cards brancos com sombras suaves, visual executivo.'
+          : productStyle === 'cyberpunk'
+          ? 'Estilo Cyberpunk High-Tech: Fundo preto puro (#000000), neon verde/ciano, bordas brilhantes glow, estilo futurista.'
+          : productStyle === 'warm'
+          ? 'Estilo Warm Premium: Fundo escuro aquecido, tons dourados/âmbar (#0c0a09), sofisticação e luxo.'
+          : 'Estilo Dark Luxury: Fundo escuro (#030712), efeitos glassmorphism, acentos roxo/índigo, visual de elite de alta conversão.';
+
+        const prompt = `Você é o CÉREBRO DE APRENDIZADO IA especialista em Landing Pages de Altíssima Conversão.
+Gere uma Landing Page completa em HTML5 para o seguinte produto.
+
+DADOS DO PRODUTO:
+- Nome do Produto: ${productName}
+- Descrição Completa: ${productDesc}
+- Principal Benefício: ${productBenefit || 'Inovação e alta performance garantida.'}
+- Público-Alvo: ${productTarget || 'Profissionais e clientes exigentes.'}
+- Estilo Visual Solicitado: ${styleGuide}
+
+APLIQUE OS APRENDIZADOS DE MEMÓRIA:
+${formattedMemories}
+
+DIRETIVAS RÍGIDAS DE SAÍDA:
+1. Retorne EXCLUSIVAMENTE o código HTML5 completo dentro de um bloco \`\`\`html ... \`\`\`.
+2. NUNCA inclua frases de introdução, explicações, requisitos nem copie textos de regras/prompts no HTML.
+3. O código HTML deve incluir Tailwind CSS CDN (<script src="https://cdn.tailwindcss.com"></script>) e fonte Google Fonts Plus Jakarta Sans.
+4. Crie um design de vendas real com Navbar, Hero Section com título impactante, Grid de Benefícios, Prova Social com depoimentos, Perguntas Frequentes (FAQ), Caixa de Oferta com botão CTA e Rodapé.`;
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.6-flash',
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          config: { temperature: 0.3 }
+        });
+
+        const responseText = response.text || '';
+        const codeMatch = responseText.match(/```html\s*([\s\S]*?)\s*```/i);
+        if (codeMatch) {
+          finalHtml = codeMatch[1].trim();
+        } else {
+          const htmlStart = responseText.search(/<!DOCTYPE html|<html/i);
+          const htmlEnd = responseText.search(/<\/html>/i);
+          if (htmlStart !== -1 && htmlEnd !== -1) {
+            finalHtml = responseText.substring(htmlStart, htmlEnd + 7).trim();
+          }
+        }
+
+        // Validação estrita: se vazou prompt ou não é um HTML5 válido, rejeita e usa gerador local profissional
+        if (!finalHtml || 
+            finalHtml.toUpperCase().includes('TEXT:REQUISITOS') || 
+            finalHtml.toUpperCase().includes('REQUISITOS OBRIGATORIOS DE RESPONSIVIDADE') ||
+            (!finalHtml.includes('<!DOCTYPE html>') && !finalHtml.includes('<html'))) {
+          console.warn("Resposta do Gemini foi inválida ou continha vazamento de instrução. Ativando gerador local do Cérebro...");
+          finalHtml = brainService.synthesizeOfflineLandingPage(
+            `${productName} - ${productDesc}`,
+            null,
+            { name: productName, desc: productDesc, benefit: productBenefit, target: productTarget, style: productStyle }
+          );
+        }
+      } catch (err: any) {
+        console.warn("Erro no Gemini, ativando Sintetizador Autônomo Local:", err);
+        setLpStatusMessage("⚠️ Falha na API externa. Ativando Sintetizador Autônomo Local do Cérebro...");
+        finalHtml = brainService.synthesizeOfflineLandingPage(
+          `${productName} - ${productDesc}`,
+          null,
+          { name: productName, desc: productDesc, benefit: productBenefit, target: productTarget, style: productStyle }
+        );
+      }
+    } else {
+      setLpStatusMessage("⚡ Sem chave externa. Gerando via Sintetizador Autônomo Local do Cérebro...");
+      finalHtml = brainService.synthesizeOfflineLandingPage(
+        `${productName} - ${productDesc}`,
+        null,
+        { name: productName, desc: productDesc, benefit: productBenefit, target: productTarget, style: productStyle }
+      );
+    }
+
+    if (!finalHtml || finalHtml.toUpperCase().includes('TEXT:REQUISITOS')) {
+      finalHtml = brainService.synthesizeOfflineLandingPage(
+        `${productName} - ${productDesc}`,
+        null,
+        { name: productName, desc: productDesc, benefit: productBenefit, target: productTarget, style: productStyle }
+      );
+    }
+
+    setGeneratedLpContent(finalHtml);
+
+    // Salva o arquivo no projeto
+    const rawFileName = fileNameInput.trim() || `landing_page_${productName.toLowerCase().replace(/[^a-z0-9]/g, '_')}.html`;
+    const cleanFileName = rawFileName.endsWith('.html') ? rawFileName : `${rawFileName}.html`;
+
+    const newFile: GeneratedFile = {
+      id: `file-${Date.now()}`,
+      name: cleanFileName,
+      content: finalHtml,
+      extension: 'html',
+      timestamp: Date.now(),
+      nodeId: 'brain-modal'
+    };
+
+    if (onFileGenerated) {
+      onFileGenerated(newFile);
+    }
+
+    // Absorve o aprendizado no Cérebro
+    brainService.learnFromLandingPage(cleanFileName, finalHtml);
+
+    setLpStatusMessage(`✅ Landing Page gerada e salva com sucesso em Arquivos como '${cleanFileName}'!`);
+    setIsGeneratingLp(false);
+  };
+
+  const handleDownloadLp = () => {
+    if (!generatedLpContent) return;
+    const rawFileName = fileNameInput.trim() || 'landing_page.html';
+    const cleanFileName = rawFileName.endsWith('.html') ? rawFileName : `${rawFileName}.html`;
+    const blob = new Blob([generatedLpContent], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = cleanFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleOpenLpInNewTab = () => {
+    if (!generatedLpContent) return;
+    const newWindow = window.open();
+    if (newWindow) {
+      newWindow.document.open();
+      newWindow.document.write(generatedLpContent);
+      newWindow.document.close();
+    }
+  };
+
+  const handleCopyLpCode = () => {
+    if (!generatedLpContent) return;
+    navigator.clipboard.writeText(generatedLpContent);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 3000);
   };
 
   const handleAddMemory = (e: React.FormEvent) => {
@@ -239,6 +412,17 @@ ${testPrompt}`;
             🕸️ Grafo do Cérebro (D3)
           </button>
           <button
+            onClick={() => setActiveTab('productLp')}
+            className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider rounded-t-xl transition-all border-b-2 shrink-0 flex items-center gap-1.5 ${
+              activeTab === 'productLp' 
+                ? 'border-emerald-500 text-emerald-300 bg-emerald-950/40 shadow-lg' 
+                : 'border-transparent text-emerald-400/80 hover:text-emerald-300'
+            }`}
+          >
+            <span>🚀 Criar Landing Page</span>
+            <span className="bg-emerald-500/20 text-emerald-300 text-[9px] px-1.5 py-0.5 rounded-full font-bold border border-emerald-500/30">Express</span>
+          </button>
+          <button
             onClick={() => setActiveTab('test')}
             className={`px-3.5 py-2 text-xs font-bold uppercase tracking-wider rounded-t-xl transition-all border-b-2 shrink-0 ${
               activeTab === 'test' 
@@ -262,6 +446,231 @@ ${testPrompt}`;
 
         {/* TAB CONTENT */}
         <div className={`flex-1 overflow-y-auto custom-scrollbar bg-gray-950/30 flex flex-col ${activeTab === 'graph' ? 'p-1.5 sm:p-2 space-y-0' : 'p-3 sm:p-6 space-y-6'}`}>
+          
+          {/* --- TAB GERAR LANDING PAGE DE PRODUTO --- */}
+          {activeTab === 'productLp' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="bg-gradient-to-r from-emerald-950/60 via-teal-950/40 to-gray-900 border border-emerald-800/50 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-black uppercase text-emerald-300 flex items-center gap-2">
+                    <span>🚀 Criador Express de Landing Page com Cérebro IA</span>
+                  </h3>
+                  <p className="text-xs text-gray-300 leading-relaxed">
+                    Insira apenas os dados do seu produto abaixo. O Cérebro IA aplicará automaticamente todo o conhecimento acumulado de alta conversão para gerar uma Landing Page profissional em HTML5 completo!
+                  </p>
+                </div>
+                <div className="bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 font-mono text-[10px] px-3 py-1.5 rounded-xl font-bold shrink-0">
+                  ⚡ 1-Clique &amp; Autossalvamento
+                </div>
+              </div>
+
+              {/* FORMULÁRIO DO PRODUTO */}
+              <form onSubmit={handleGenerateProductLp} className="bg-gray-900 border border-emerald-900/40 p-4 sm:p-6 rounded-2xl space-y-4 shadow-md">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* NOME DO PRODUTO */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-300 flex items-center justify-between">
+                      <span>1. Nome do Produto ou Marca *</span>
+                      <span className="text-[10px] text-gray-500">Ex: Mestre do Tráfego</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={productName}
+                      onChange={(e) => setProductName(e.target.value)}
+                      placeholder="Ex: FlowArchitect AI Pro"
+                      className="w-full bg-gray-950 border border-gray-800 focus:border-emerald-500 rounded-xl p-3 text-xs text-white outline-none"
+                    />
+                  </div>
+
+                  {/* NOME DO ARQUIVO FINAL */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-300 flex items-center justify-between">
+                      <span>2. Nome do Arquivo HTML</span>
+                      <span className="text-[10px] text-gray-500">Salvo em Arquivos</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={fileNameInput}
+                      onChange={(e) => setFileNameInput(e.target.value)}
+                      placeholder="landing_page_produto.html"
+                      className="w-full bg-gray-950 border border-gray-800 focus:border-emerald-500 rounded-xl p-3 text-xs text-white font-mono outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* DESCRIÇÃO DO PRODUTO */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-300 flex items-center justify-between">
+                    <span>3. Descrição do Produto / O que ele faz? *</span>
+                    <span className="text-[10px] text-gray-500">Detalhes principais</span>
+                  </label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={productDesc}
+                    onChange={(e) => setProductDesc(e.target.value)}
+                    placeholder="Ex: Plataforma completa de automação de processos no navegador que executa fluxos visuais em paralelo usando inteligência artificial..."
+                    className="w-full bg-gray-950 border border-gray-800 focus:border-emerald-500 rounded-xl p-3 text-xs text-white outline-none resize-none"
+                  />
+                </div>
+
+                {/* PRINCIPAL BENEFÍCIO E PÚBLICO ALVO */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-300">
+                      4. Principal Benefício / Proposta de Valor
+                    </label>
+                    <input
+                      type="text"
+                      value={productBenefit}
+                      onChange={(e) => setProductBenefit(e.target.value)}
+                      placeholder="Ex: Economize 10 horas semanais e triplique suas conversões"
+                      className="w-full bg-gray-950 border border-gray-800 focus:border-emerald-500 rounded-xl p-3 text-xs text-white outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-300">
+                      5. Público-Alvo / Nicho (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={productTarget}
+                      onChange={(e) => setProductTarget(e.target.value)}
+                      placeholder="Ex: Gestores de tráfego, empreendedores e afiliados"
+                      className="w-full bg-gray-950 border border-gray-800 focus:border-emerald-500 rounded-xl p-3 text-xs text-white outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* ESTILO VISUAL */}
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-xs font-bold text-gray-300">
+                    6. Estilo Visual &amp; Tema de Cores
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { id: 'dark', label: 'Dark Luxury 👑', desc: 'Preto & Roxo Elite' },
+                      { id: 'clean', label: 'Clean Modern ⚡', desc: 'Claro & Azul Corporate' },
+                      { id: 'cyberpunk', label: 'Neon Tech 🤖', desc: 'Preto & Verde Neon' },
+                      { id: 'warm', label: 'Warm Premium ✨', desc: 'Escuro & Dourado' },
+                    ].map((st) => (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => setProductStyle(st.id as any)}
+                        className={`p-2.5 rounded-xl border text-left transition-all ${
+                          productStyle === st.id
+                            ? 'bg-emerald-950/70 border-emerald-500 text-white shadow-md'
+                            : 'bg-gray-950 border-gray-800 text-gray-400 hover:text-gray-200'
+                        }`}
+                      >
+                        <div className="text-xs font-bold">{st.label}</div>
+                        <div className="text-[10px] text-gray-500">{st.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isGeneratingLp || !productName.trim() || !productDesc.trim()}
+                  className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl transition-all shadow-xl shadow-emerald-950/50 flex items-center justify-center gap-2"
+                >
+                  {isGeneratingLp ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      O Cérebro IA está gerando sua Landing Page...
+                    </>
+                  ) : (
+                    '⚡ Gerar Landing Page Profissional pelo Cérebro'
+                  )}
+                </button>
+              </form>
+
+              {/* MENSAGEM DE STATUS */}
+              {lpStatusMessage && (
+                <div className="bg-emerald-950/80 border border-emerald-800 text-emerald-200 p-3.5 rounded-xl text-xs font-bold animate-fade-in flex items-center justify-between gap-3">
+                  <span>{lpStatusMessage}</span>
+                  {generatedLpContent && (
+                    <span className="text-[10px] bg-emerald-900 border border-emerald-700 px-2 py-0.5 rounded-full font-mono">HTML Pronto</span>
+                  )}
+                </div>
+              )}
+
+              {/* PREVIEW DA LANDING PAGE GERADA */}
+              {generatedLpContent && (
+                <div className="bg-gray-900 border border-emerald-900/60 rounded-2xl overflow-hidden shadow-2xl space-y-0 animate-scale-up">
+                  {/* PREVIEW TOOLBAR */}
+                  <div className="p-3 bg-gray-950 border-b border-gray-800 flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>📄 Landing Page Gerada</span>
+                      </span>
+
+                      <div className="flex items-center bg-gray-900 p-0.5 rounded-lg border border-gray-800">
+                        <button
+                          onClick={() => setLpPreviewTab('preview')}
+                          className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
+                            lpPreviewTab === 'preview' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          👁️ Visualização
+                        </button>
+                        <button
+                          onClick={() => setLpPreviewTab('code')}
+                          className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
+                            lpPreviewTab === 'code' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          💻 Código HTML
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleCopyLpCode}
+                        className="bg-gray-800 hover:bg-gray-700 text-gray-200 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                      >
+                        {copiedCode ? '✅ Copiado!' : '📋 Copiar Código'}
+                      </button>
+
+                      <button
+                        onClick={handleOpenLpInNewTab}
+                        className="bg-teal-700 hover:bg-teal-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                      >
+                        🔗 Abrir em Nova Aba
+                      </button>
+
+                      <button
+                        onClick={handleDownloadLp}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded-lg transition-all shadow-md flex items-center gap-1"
+                      >
+                        📥 Baixar HTML
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* PREVIEW CONTAINER */}
+                  {lpPreviewTab === 'preview' ? (
+                    <div className="w-full h-[550px] bg-white relative">
+                      <iframe
+                        srcDoc={generatedLpContent}
+                        title="Preview Landing Page"
+                        className="w-full h-full border-0"
+                      />
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-gray-950 font-mono text-xs text-emerald-300 max-h-[550px] overflow-y-auto whitespace-pre-wrap leading-relaxed select-all">
+                      {generatedLpContent}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           
           {/* --- TAB GRAFO DO CÉREBRO --- */}
           {activeTab === 'graph' && (

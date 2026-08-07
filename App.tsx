@@ -13,6 +13,7 @@ import {
 } from 'reactflow';
 import type { Connection } from 'reactflow';
 import CustomNode from './components/CustomNode';
+import CustomDeletableEdge from './components/CustomDeletableEdge';
 import AIChat from './components/AIChat';
 import LogPanel from './components/LogPanel';
 import FilePanel from './components/FilePanel';
@@ -43,11 +44,18 @@ const nodeTypes = {
   start: CustomNode
 };
 
+const edgeTypes = {
+  custom: CustomDeletableEdge,
+  smoothstep: CustomDeletableEdge,
+  default: CustomDeletableEdge,
+};
+
 const defaultEdgeOptions = {
   type: 'smoothstep',
   animated: true,
-  style: { strokeWidth: 3, stroke: '#3b82f6' },
+  style: { strokeWidth: 3, stroke: '#3b82f6', cursor: 'pointer' },
   markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
+  interactionWidth: 30,
 };
 
 const AUTOSAVE_KEY = 'flow_architect_autosave_v2';
@@ -63,6 +71,7 @@ const App = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
 
   const [currentProject, setCurrentProject] = useState<{id: string, name: string} | null>(null);
@@ -144,14 +153,51 @@ const App = () => {
   useEffect(() => {
     if (!isLoaded) return;
     const timeoutId = setTimeout(() => {
-      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ nodes, edges, files, currentProject }));
+      try {
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ nodes, edges, files, currentProject }));
+      } catch (e) {
+        console.warn("[Autosave] QuotaExceededError detectado. Otimizando dados locais:", e);
+        try {
+          const lightweightFiles = files.map(f => ({
+            ...f,
+            content: f.content.length > 30000 
+              ? f.content.substring(0, 30000) + '\n<!-- [CONTEÚDO TRUNCADO NO AUTOSAVE LOCAL DEVIDO AO LIMITE DE MEMÓRIA DO NAVEGADOR] -->' 
+              : f.content
+          }));
+          localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ nodes, edges, files: lightweightFiles, currentProject }));
+        } catch (e2) {
+          try {
+            const minimalFiles = files.map(f => ({ ...f, content: '[Salvo na sessão | Baixe o arquivo no painel]' }));
+            localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ nodes, edges, files: minimalFiles, currentProject }));
+          } catch (e3) {
+            console.error("[Autosave] Erro ao gravar estado no LocalStorage:", e3);
+          }
+        }
+      }
     }, 1500);
     return () => clearTimeout(timeoutId);
   }, [nodes, edges, files, isLoaded, currentProject]);
 
+  const handleDeleteEdge = useCallback((edgeId: string) => {
+    setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+    setSelectedEdgeId((prev) => (prev === edgeId ? null : prev));
+  }, [setEdges]);
+
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, ...defaultEdgeOptions }, eds)),
-    [setEdges]
+    (params: Connection) => setEdges((eds) => addEdge({
+      ...params,
+      ...defaultEdgeOptions,
+      data: { onDelete: handleDeleteEdge }
+    }, eds)),
+    [setEdges, handleDeleteEdge]
+  );
+
+  const onEdgeClick = useCallback(
+    (event: React.MouseEvent, edge: FlowEdge) => {
+      event.stopPropagation();
+      setSelectedEdgeId(edge.id);
+    },
+    []
   );
 
   const handleAddNode = (type: NodeType, label: string) => {
@@ -381,13 +427,52 @@ const App = () => {
             {/* CANVAS */}
             <div className="flex-1 relative">
                 <ReactFlow 
-                    nodes={nodes} edges={edges} 
-                    onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} 
-                    onNodeClick={(_, node) => setSelectedNodeId(node.id)}
-                    onPaneClick={() => setSelectedNodeId(null)} nodeTypes={nodeTypes} defaultEdgeOptions={defaultEdgeOptions}
+                    nodes={nodes} 
+                    edges={edges.map(e => ({
+                      ...e,
+                      type: e.type || 'smoothstep',
+                      data: { ...e.data, onDelete: handleDeleteEdge }
+                    }))} 
+                    onNodesChange={onNodesChange} 
+                    onEdgesChange={onEdgesChange} 
+                    onConnect={onConnect} 
+                    onEdgeClick={onEdgeClick}
+                    onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); }}
+                    onPaneClick={() => { setSelectedNodeId(null); setSelectedEdgeId(null); }} 
+                    nodeTypes={nodeTypes} 
+                    edgeTypes={edgeTypes}
+                    defaultEdgeOptions={defaultEdgeOptions}
                     fitView fitViewOptions={{ padding: 0.2 }} minZoom={0.1} maxZoom={2} proOptions={{ hideAttribution: true }}
                 >
                   <Background color="#1e293b" gap={25} size={1} />
+
+                  {/* PAINEL DE AÇÃO PARA LINHA CONECTORA SELECIONADA */}
+                  {selectedEdgeId && (
+                    <Panel position="top-center" className="mt-4">
+                      <div className="bg-gray-900/95 border border-red-500/80 text-white px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-md animate-fade-in z-50">
+                        <div className="flex items-center gap-2 text-xs font-bold text-gray-200">
+                          <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                          <span>Linha de conexão selecionada</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteEdge(selectedEdgeId)}
+                            className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                          >
+                            <span>🗑️ Apagar Linha (Desconectar)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedEdgeId(null)}
+                            className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold px-2.5 py-1.5 rounded-xl transition-colors cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    </Panel>
+                  )}
                   
                   <Panel position="bottom-right" className="mb-20 md:mb-4">
                      <button 
@@ -502,7 +587,11 @@ const App = () => {
         <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onInstallPWA={handleInstallPWA} />
         <ProjectLibraryModal isOpen={isLibraryOpen} onClose={() => setIsLibraryOpen(false)} onLoadProject={handleLoadProject} currentNodesCount={nodes.length} activeProjectId={currentProject?.id} />
         <FlowJsonModal isOpen={isJsonModalOpen} onClose={() => setIsJsonModalOpen(false)} nodes={nodes} edges={edges} onImport={handleImportJson} />
-        <BrainModal isOpen={isBrainModalOpen} onClose={() => setIsBrainModalOpen(false)} />
+        <BrainModal 
+          isOpen={isBrainModalOpen} 
+          onClose={() => setIsBrainModalOpen(false)} 
+          onFileGenerated={(newFile) => setFiles(prev => [newFile, ...prev])}
+        />
 
         {/* MODAL INSTRUÇÕES DE INSTALAÇÃO WEBAPP / PWA */}
         {showInstallModal && (
