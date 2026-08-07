@@ -41,6 +41,7 @@ const nodeTypes = {
   telegram: CustomNode,
   fileSave: CustomNode,
   aiBrain: CustomNode,
+  htmlAnalyzer: CustomNode,
   start: CustomNode
 };
 
@@ -489,6 +490,7 @@ const App = () => {
                               {type: NodeType.HTTP_REQUEST, label: 'HTTP / API', color: 'bg-blue-500'},
                               {type: NodeType.IF_CONDITION, label: 'Lógica IF', color: 'bg-yellow-500'},
                               {type: NodeType.AI_BRAIN, label: 'Cérebro IA 🧠', color: 'bg-purple-500'},
+                              {type: NodeType.HTML_ANALYZER, label: 'Analisar HTML 🔍', color: 'bg-emerald-500'},
                               {type: NodeType.FILE_SAVE, label: 'Salvar Arquivo', color: 'bg-indigo-500'},
                             ].map(item => (
                                 <button key={item.type} onClick={() => handleAddNode(item.type, item.label)} className="w-full px-4 py-3 text-left text-xs hover:bg-gray-800 flex items-center gap-3 rounded-lg transition-colors font-bold text-gray-300">

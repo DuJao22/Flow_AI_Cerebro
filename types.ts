@@ -14,6 +14,7 @@ export enum NodeType {
   TELEGRAM = 'telegram',
   FILE_SAVE = 'fileSave', // Novo node para salvar arquivos
   AI_BRAIN = 'aiBrain',   // Nó do Cérebro de Aprendizado / Raciocínio Inteligente
+  HTML_ANALYZER = 'htmlAnalyzer', // Nó de Análise Estrutural HTML e Aprendizado com Chave do Cérebro
   START = 'start'
 }
 

@@ -301,8 +301,93 @@ const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({ node, isOpen, onClose
                     </div>
                 )}
 
+                {/* HTML ANALYZER UI */}
+                {(node.data.type === NodeType.HTML_ANALYZER || node.data.type === ('htmlAnalyzer' as any)) && (
+                    <div className="space-y-4 animate-fade-in">
+                        <div className="bg-emerald-950/60 border border-emerald-500/40 rounded-xl p-3 text-xs text-emerald-200 space-y-1">
+                          <div className="font-bold flex items-center gap-1.5 text-emerald-300">
+                            <span>🧠 Aprendizado de Estrutura HTML</span>
+                          </div>
+                          <p className="text-[10px] text-emerald-300/80 leading-relaxed">
+                            Analisa a estrutura do HTML (seções, classes Tailwind, paleta, CTAs) e salva o aprendizado na memória permanente usando exclusivamente a <strong>Chave IA do Cérebro</strong>.
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase mb-2">
+                            Código HTML para Análise (Opcional)
+                          </label>
+                          <textarea
+                            value={config.htmlContent || ''}
+                            onChange={(e) => handleChange('htmlContent', e.target.value)}
+                            placeholder="Cole o código HTML5 aqui, ou deixe em branco para analisar o HTML retornado pelo nó anterior..."
+                            rows={5}
+                            className="w-full bg-gray-950 border border-gray-800 rounded-xl p-3 text-xs font-mono text-emerald-300 outline-none focus:border-emerald-500 resize-none leading-relaxed"
+                          />
+                          
+                          <div className="mt-2 flex items-center justify-between">
+                            <label className="cursor-pointer bg-gray-800 hover:bg-gray-700 text-gray-300 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-gray-700 inline-flex items-center gap-1 transition-colors">
+                              <span>📁 Carregar Arquivo .html</span>
+                              <input 
+                                type="file" 
+                                accept=".html,.htm" 
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (evt) => {
+                                      if (evt.target?.result) {
+                                        handleChange('htmlContent', evt.target.result as string);
+                                      }
+                                    };
+                                    reader.readAsText(file);
+                                  }
+                                }}
+                              />
+                            </label>
+                            {config.htmlContent && (
+                              <button
+                                type="button"
+                                onClick={() => handleChange('htmlContent', '')}
+                                className="text-[10px] text-rose-400 hover:underline font-bold"
+                              >
+                                Limpar HTML
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black text-emerald-400 uppercase mb-2">
+                            Foco Análise / Diretiva Personalizada
+                          </label>
+                          <input
+                            type="text"
+                            value={config.directive || ''}
+                            onChange={(e) => handleChange('directive', e.target.value)}
+                            placeholder="Ex: Identificar padrões de seções, cores Tailwind e ganchos de conversão..."
+                            className="w-full bg-gray-950 border border-gray-800 rounded-xl p-3 text-xs text-white outline-none focus:border-emerald-500"
+                          />
+                        </div>
+
+                        <label className="flex items-center justify-between p-3 bg-gray-950 rounded-xl border border-emerald-900/40 cursor-pointer">
+                          <div>
+                            <div className="text-xs font-bold text-gray-200">Salvar Aprendizado no Cérebro</div>
+                            <div className="text-[9px] text-gray-500">Grava as regras de estrutura diretamente na memória do Cérebro.</div>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={config.autoSaveMemory !== false}
+                            onChange={(e) => handleChange('autoSaveMemory', e.target.checked)}
+                            className="w-4 h-4 accent-emerald-500 rounded"
+                          />
+                        </label>
+                    </div>
+                )}
+
                 {/* GENERIC FALLBACK UI */}
-                {![NodeType.HTTP_REQUEST, NodeType.IF_CONDITION, NodeType.FILE_SAVE, NodeType.DELAY, NodeType.AI_BRAIN, 'aiBrain'].includes(node.data.type as any) && (
+                {![NodeType.HTTP_REQUEST, NodeType.IF_CONDITION, NodeType.FILE_SAVE, NodeType.DELAY, NodeType.AI_BRAIN, NodeType.HTML_ANALYZER, 'aiBrain', 'htmlAnalyzer'].includes(node.data.type as any) && (
                     <div className="flex flex-col items-center justify-center h-40 text-center space-y-3 opacity-60">
                         <svg className="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
                         <p className="text-xs text-gray-400 max-w-[200px]">

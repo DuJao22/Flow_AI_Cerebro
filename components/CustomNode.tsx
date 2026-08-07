@@ -60,6 +60,9 @@ const CustomNode = ({ data, isConnectable, selected }: NodeProps) => {
       } else if (data.type === NodeType.AI_BRAIN || data.type === 'aiBrain') {
           statusStyles = 'border-purple-500/80 bg-gradient-to-r from-purple-950/70 via-gray-900 to-indigo-950/70 shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:border-purple-400';
           statusIcon = <span className="mr-2 text-sm animate-pulse">🧠</span>;
+      } else if (data.type === NodeType.HTML_ANALYZER || data.type === 'htmlAnalyzer') {
+          statusStyles = 'border-emerald-500/80 bg-gradient-to-r from-emerald-950/70 via-gray-900 to-teal-950/70 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:border-emerald-400';
+          statusIcon = <span className="mr-2 text-sm animate-pulse">🔍</span>;
       } else {
           statusStyles = 'border-gray-600 bg-gray-800 hover:border-gray-500';
       }
