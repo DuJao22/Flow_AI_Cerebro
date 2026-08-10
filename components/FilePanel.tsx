@@ -52,7 +52,7 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
       const presentationEngine = `
 <style id="presentation-frame-styles">
   html, body {
-    margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; overflow: hidden !important;
+    margin: 0 !important; padding: 0 !important; width: 100% !important; min-height: 100% !important; overflow-y: auto !important;
     background: #090d16 !important; font-family: system-ui, -apple-system, sans-serif !important;
   }
   .frame-slide-wrapper {
@@ -242,7 +242,7 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
   if (!isOpen) return null;
 
   return (
-    <div className="h-full bg-gray-950 flex flex-col font-mono text-xs w-full">
+    <div className="h-full min-h-0 bg-gray-950 flex flex-col font-mono text-xs w-full overflow-hidden">
       
       {/* MENSAGEM DE TOAST DE APRENDIZADO */}
       {learningMessage && (
@@ -252,7 +252,7 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
       )}
 
       {/* LISTA DE ARQUIVOS */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 custom-scrollbar">
         {files.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-2 py-10">
             <svg className="w-10 h-10 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">

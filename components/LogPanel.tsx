@@ -64,7 +64,7 @@ const LogPanel: React.FC<LogPanelProps> = ({ logs, isOpen = true, onToggle }) =>
   };
 
   return (
-    <div className="h-full bg-[#0a0c10] border-t border-gray-700 flex flex-col font-mono text-xs w-full shadow-inner">
+    <div className="h-full min-h-0 bg-[#0a0c10] border-t border-gray-700 flex flex-col font-mono text-xs w-full shadow-inner overflow-hidden">
       <div 
         className="flex items-center justify-between px-4 py-2 bg-[#161b22] border-b border-gray-700 cursor-pointer hover:bg-gray-800 transition-colors"
         onClick={onToggle}
@@ -91,7 +91,7 @@ const LogPanel: React.FC<LogPanelProps> = ({ logs, isOpen = true, onToggle }) =>
       </div>
       
       {isOpen && (
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0d1117]">
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-[#0d1117] custom-scrollbar">
             {logs.length === 0 && (
                 <div className="text-gray-600 italic flex flex-col items-center justify-center h-28 opacity-60 gap-2 border border-dashed border-gray-800 rounded-2xl bg-gray-950/50">
                     <div className="relative flex items-center justify-center">

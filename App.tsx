@@ -41,7 +41,6 @@ const nodeTypes = {
   telegram: CustomNode,
   fileSave: CustomNode,
   aiBrain: CustomNode,
-  htmlAnalyzer: CustomNode,
   start: CustomNode
 };
 
@@ -490,7 +489,6 @@ const App = () => {
                               {type: NodeType.HTTP_REQUEST, label: 'HTTP / API', color: 'bg-blue-500'},
                               {type: NodeType.IF_CONDITION, label: 'Lógica IF', color: 'bg-yellow-500'},
                               {type: NodeType.AI_BRAIN, label: 'Cérebro IA 🧠', color: 'bg-purple-500'},
-                              {type: NodeType.HTML_ANALYZER, label: 'Analisar HTML 🔍', color: 'bg-emerald-500'},
                               {type: NodeType.FILE_SAVE, label: 'Salvar Arquivo', color: 'bg-indigo-500'},
                             ].map(item => (
                                 <button key={item.type} onClick={() => handleAddNode(item.type, item.label)} className="w-full px-4 py-3 text-left text-xs hover:bg-gray-800 flex items-center gap-3 rounded-lg transition-colors font-bold text-gray-300">
@@ -515,7 +513,7 @@ const App = () => {
                         <div className="flex-1"></div>
                         <button onClick={() => setShowDesktopLogs(false)} className="px-2 text-gray-500 hover:text-white"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></button>
                     </div>
-                    <div className="flex-1 overflow-hidden relative">
+                    <div className="flex-1 min-h-0 overflow-hidden relative">
                          {terminalSubTab === 'logs' ? (
                            <LogPanel logs={logs} isOpen={true} />
                          ) : terminalSubTab === 'files' ? (
@@ -539,14 +537,14 @@ const App = () => {
           <div className={`md:hidden flex-1 overflow-hidden ${activeTab === 'chat' ? 'flex flex-col' : 'hidden'}`}>
              <AIChat onImportFlow={handleLoadProject} logs={logs} nodes={nodes} edges={edges} />
           </div>
-          <div className={`md:hidden flex-1 ${activeTab === 'terminal' ? 'block' : 'hidden'}`}>
-             <div className="flex flex-col h-full bg-gray-950">
+          <div className={`md:hidden flex-1 min-h-0 ${activeTab === 'terminal' ? 'flex flex-col' : 'hidden'}`}>
+             <div className="flex flex-col h-full min-h-0 bg-gray-950 overflow-hidden">
                 <div className="flex bg-gray-900 p-1 border-b border-gray-800">
                     <button onClick={() => setTerminalSubTab('logs')} className={`flex-1 py-3 text-[11px] font-black uppercase tracking-widest rounded transition-all ${terminalSubTab === 'logs' ? 'bg-blue-600 text-white' : 'text-gray-500'}`}>Logs</button>
                     <button onClick={() => setTerminalSubTab('files')} className={`flex-1 py-3 text-[11px] font-black uppercase tracking-widest rounded transition-all ${terminalSubTab === 'files' ? 'bg-blue-600 text-white' : 'text-gray-500'}`}>Arquivos ({files.length})</button>
                     <button onClick={() => setTerminalSubTab('graph')} className={`flex-1 py-3 text-[11px] font-black uppercase tracking-widest rounded transition-all ${terminalSubTab === 'graph' ? 'bg-purple-600 text-white' : 'text-purple-400'}`}>📊 Grafo D3</button>
                 </div>
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 min-h-0 overflow-hidden relative">
                     {terminalSubTab === 'logs' ? (
                       <LogPanel logs={logs} isOpen={true} />
                     ) : terminalSubTab === 'files' ? (

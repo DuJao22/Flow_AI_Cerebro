@@ -243,36 +243,89 @@ export const brainService = {
     ).join('\n');
   },
 
-  // IMPORTAÇÃO E EXPORTAÇÃO COMPLETA DO BANCO DE DADOS (DB BACKUP)
+  // IMPORTAÇÃO E EXPORTAÇÃO COMPLETA DO BANCO DE DADOS (DB BACKUP & MEMÓRIAS JSON)
   exportDatabase: (): string => {
+    const memories = brainService.getMemories();
     const dbData = {
       version: 1,
-      databaseName: DB_NAME,
+      appName: 'Flow Architect AI - Cérebro IA',
+      type: 'brain_memory_export',
       exportedAt: new Date().toISOString(),
-      dedicatedApiKey: brainService.getDedicatedApiKey() ? '*** CONFIGURADA ***' : 'NÃO CONFIGURADA',
-      totalMemories: brainService.getMemories().length,
-      memories: brainService.getMemories()
+      totalMemories: memories.length,
+      memories: memories
     };
     return JSON.stringify(dbData, null, 2);
   },
 
-  importDatabase: (jsonText: string): { success: boolean; count: number; message: string } => {
+  importDatabase: (jsonText: string, merge: boolean = true): { success: boolean; count: number; message: string } => {
     try {
       const parsed = JSON.parse(jsonText);
-      const incomingMemories = parsed.memories || (Array.isArray(parsed) ? parsed : null);
+      let rawList: any[] | null = null;
 
-      if (!incomingMemories || !Array.isArray(incomingMemories)) {
-        return { success: false, count: 0, message: "Formato de banco de dados inválido. Esperado um array 'memories'." };
+      if (Array.isArray(parsed)) {
+        rawList = parsed;
+      } else if (parsed && typeof parsed === 'object') {
+        rawList = parsed.memories || parsed.brainMemories || parsed.data || parsed.items || null;
       }
 
-      brainService.saveMemoriesToDB(incomingMemories);
-      return { 
-        success: true, 
-        count: incomingMemories.length, 
-        message: `Banco de dados restaurado com sucesso! ${incomingMemories.length} memórias importadas.` 
-      };
+      if (!rawList || !Array.isArray(rawList)) {
+        return { 
+          success: false, 
+          count: 0, 
+          message: "Formato de arquivo JSON inválido. Esperado um arquivo de memória com a lista 'memories'." 
+        };
+      }
+
+      // Valida e sanitiza cada item importado
+      const validMemories: BrainMemory[] = rawList.map((m: any, idx: number) => {
+        return {
+          id: m.id || `mem-imp-${Date.now()}-${idx}`,
+          category: ['rule', 'preference', 'insight', 'pattern', 'correction'].includes(m.category) ? m.category : 'insight',
+          content: String(m.content || m.text || '').trim(),
+          source: ['auto', 'user', 'execution'].includes(m.source) ? m.source : 'user',
+          createdAt: typeof m.createdAt === 'number' ? m.createdAt : Date.now(),
+          importance: ['high', 'medium', 'low'].includes(m.importance) ? m.importance : 'medium',
+          useCount: typeof m.useCount === 'number' ? m.useCount : 1
+        };
+      }).filter(m => m.content.length > 0);
+
+      if (validMemories.length === 0) {
+        return { success: false, count: 0, message: "Nenhuma memória válida encontrada no arquivo JSON." };
+      }
+
+      if (merge) {
+        const existingMemories = brainService.getMemories();
+        const existingMap = new Map(existingMemories.map(m => [m.content.toLowerCase().trim(), m]));
+
+        let addedCount = 0;
+        validMemories.forEach(incoming => {
+          const key = incoming.content.toLowerCase().trim();
+          if (existingMap.has(key)) {
+            const item = existingMap.get(key)!;
+            item.useCount += 1;
+          } else {
+            existingMap.set(key, incoming);
+            addedCount++;
+          }
+        });
+
+        const mergedList = Array.from(existingMap.values());
+        brainService.saveMemoriesToDB(mergedList);
+        return {
+          success: true,
+          count: validMemories.length,
+          message: `Memória importada com sucesso! ${addedCount} novos aprendizados adicionados, ${validMemories.length - addedCount} atualizados.`
+        };
+      } else {
+        brainService.saveMemoriesToDB(validMemories);
+        return { 
+          success: true, 
+          count: validMemories.length, 
+          message: `Banco de memórias substituído com sucesso! ${validMemories.length} aprendizados carregados.` 
+        };
+      }
     } catch (err: any) {
-      return { success: false, count: 0, message: `Erro ao importar arquivo DB: ${err.message}` };
+      return { success: false, count: 0, message: `Erro ao processar arquivo JSON: ${err.message || 'Sintaxe JSON inválida'}` };
     }
   },
 

@@ -260,14 +260,14 @@ DIRETIVAS RÍGIDAS DE SAÍDA:
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `brain_db_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `cerebro_ia_memorias_${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    setDbStatusMessage("📥 Download do banco de dados (DB) concluído!");
-    setTimeout(() => setDbStatusMessage(null), 4000);
+    setDbStatusMessage("📥 Arquivo JSON de memórias do Cérebro IA exportado com sucesso!");
+    setTimeout(() => setDbStatusMessage(null), 5000);
   };
 
   const handleImportDB = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -683,6 +683,49 @@ ${testPrompt}`;
           {activeTab === 'memories' && (
             <div className="space-y-6">
               
+              {/* MENSAGEM DE STATUS DO BANCO / IMPORTAÇÃO */}
+              {dbStatusMessage && (
+                <div className="bg-purple-950/90 border border-purple-700 text-purple-100 p-3.5 rounded-2xl text-xs font-bold animate-fade-in flex items-center justify-between gap-3 shadow-lg">
+                  <span className="flex items-center gap-2">
+                    <span className="text-base">🧠</span>
+                    <span>{dbStatusMessage}</span>
+                  </span>
+                  <button onClick={() => setDbStatusMessage(null)} className="text-purple-300 hover:text-white text-xs">✕</button>
+                </div>
+              )}
+
+              {/* BANNER EXPORTAR & IMPORTAR MEMÓRIA JSON */}
+              <div className="bg-gradient-to-r from-purple-950/80 via-indigo-950/70 to-gray-900 border border-purple-700/60 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
+                <div className="space-y-1">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-purple-300 flex items-center gap-2">
+                    <span>💾 Exportar & Importar Aprendizados (JSON)</span>
+                  </h3>
+                  <p className="text-[11px] text-gray-300 leading-relaxed">
+                    Exporte a memória do Cérebro IA em arquivo JSON para compartilhar aprendizados de Landing Pages ou restaurá-los em outras sessões.
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                  <button
+                    onClick={handleExportDB}
+                    className="flex-1 sm:flex-none bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 active:scale-95"
+                    title="Baixar arquivo JSON com todas as memórias acumuladas"
+                  >
+                    <span>📥 Exportar JSON</span>
+                  </button>
+
+                  <label className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer">
+                    <span>📤 Upload JSON</span>
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={handleImportDB}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
               {/* FORMA DE ADICIONAR NOVA REGRA */}
               <form onSubmit={handleAddMemory} className="bg-gray-900 border border-purple-900/40 p-4 rounded-2xl space-y-3 shadow-md">
                 <h3 className="text-xs font-black uppercase tracking-wider text-purple-300 flex items-center gap-2">

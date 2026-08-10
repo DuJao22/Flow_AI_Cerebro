@@ -7,7 +7,7 @@ interface LandingPageProps {
 
 const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
   return (
-    <div className="min-h-screen bg-[#0a0c10] text-white font-sans selection:bg-purple-500/30 overflow-y-auto">
+    <div className="fixed inset-0 h-screen w-screen overflow-y-auto z-50 bg-[#0a0c10] text-white font-sans selection:bg-purple-500/30 custom-scrollbar">
       {/* Header */}
       <header className="fixed top-0 w-full border-b border-gray-800 bg-[#0a0c10]/80 backdrop-blur-md z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
