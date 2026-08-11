@@ -13,12 +13,17 @@ const KeyStatusPanel: React.FC = () => {
   }, []);
 
   const keyDetails = keyManager.getAllKeysStatus();
+  const warningMsg = keyManager.getLastWarning();
 
   return (
     <div className="relative flex items-center">
       <div 
         onClick={() => setShowDetails(!showDetails)}
-        className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 cursor-pointer transition-all"
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all ${
+          warningMsg 
+            ? 'bg-amber-950/80 hover:bg-amber-900/90 border-amber-600/70 text-amber-200' 
+            : 'bg-gray-800 hover:bg-gray-700 border-gray-700'
+        }`}
       >
         <div className="flex -space-x-1">
             {keyDetails.slice(0, 5).map((k) => (
@@ -30,7 +35,9 @@ const KeyStatusPanel: React.FC = () => {
             {keyDetails.length > 5 && <div className="text-[8px] text-gray-500 pl-2">+{keyDetails.length - 5}</div>}
         </div>
         <div className="flex flex-col">
-            <span className="text-[9px] font-bold text-gray-400 leading-none">KEY STATUS</span>
+            <span className="text-[9px] font-bold text-gray-400 leading-none flex items-center gap-1">
+              KEY STATUS {warningMsg && <span className="text-amber-400 text-[10px]">⚠️ COTA</span>}
+            </span>
             <span className={`text-[10px] font-mono leading-tight ${status.healthy > 0 ? 'text-green-400' : 'text-red-400'}`}>
                 #{status.current + 1} ({status.healthy}/{status.total})
             </span>
@@ -38,7 +45,14 @@ const KeyStatusPanel: React.FC = () => {
       </div>
 
       {showDetails && (
-        <div className="absolute top-full mt-2 right-0 w-64 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-[100] p-4 animate-fade-in-up">
+        <div className="absolute top-full mt-2 right-0 w-72 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-[100] p-4 animate-fade-in-up">
+          {warningMsg && (
+            <div className="bg-amber-950/80 border border-amber-600/60 p-2 rounded-lg text-[10px] text-amber-200 mb-3 flex flex-col gap-1">
+              <span className="font-bold flex items-center gap-1">⚠️ AVISO DE TOKENS/COTA:</span>
+              <p className="leading-snug">{warningMsg}</p>
+            </div>
+          )}
+
           <div className="flex justify-between items-center mb-3">
              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Pool de Chaves</h4>
              <button 

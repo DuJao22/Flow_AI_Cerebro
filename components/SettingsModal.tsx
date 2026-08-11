@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { CREATOR_CREDIT } from '../constants';
 import { keyManager } from '../services/keyManager';
 import { validateGeminiKey } from '../services/geminiService';
+import { CreditsCard } from './CreditsCard';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -145,6 +146,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onInstal
                 <span className="text-gray-200 font-bold">1.5.0 PWA & Rede Neuronal</span>
               </div>
           </div>
+
+          {/* CARD DE CRÉDITOS DO SISTEMA */}
+          <CreditsCard isOpen={true} floating={false} />
         </div>
 
         <div className="p-4 border-t border-gray-700 bg-gray-800 flex gap-3 pb-[max(16px,env(safe-area-inset-bottom))]">

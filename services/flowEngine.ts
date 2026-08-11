@@ -331,20 +331,26 @@ export class FlowEngine {
                 const memoriesText = brainService.getFormattedContext();
 
                 const promptText = `
-Você é o Cérebro de Aprendizado IA responsável por executar esta etapa do fluxo de automação.
-REGRAS E MEMÓRIAS ACUMULADAS:
+VOCÊ É O CÉREBRO DE IA ULTRA PROFISSIONAL E DE ALTA CONVERSÃO.
+SUA DIRETRIZ ABSOLUTA É NUNCA GERAR PÁGINAS FEIAS, GENÉRICAS OU INCOMPLETAS.
+TODA PÁGINA OU ESTRUTURA DEVE SER UMA "ULTRA MEGA LANDING PAGE PROFISSIONAL".
+
+REGRAS E MEMÓRIAS ESTRUTURAIS ACUMULADAS NO CÉREBRO:
 ${memoriesText}
 
 DADOS DE ENTRADA DO FLUXO (INPUT):
 ${typeof currentInput === 'object' ? JSON.stringify(currentInput, null, 2) : String(currentInput)}
 
-SUA DIRETIVA / TAREFA:
+SUA DIRETIVA / TAREFA ESPECÍFICA:
 ${directive}
 
-OBSERVAÇÃO IMPORTANTE PARA GERAGÃO DE CÓDIGO HTML / PÁGINAS:
-Se esta tarefa envolver a criação ou geração de código HTML / Landing Page / Apresentação, você DEVE gerar um código HTML5 completo, limpo, totalmente responsivo, utilizando Tailwind CSS e componentes semânticos de alta conversão.
+DIRETRIZES OBRIGATÓRIAS PARA GERAÇÃO DE CÓDIGO HTML / LANDING PAGE:
+1. GERE UM CÓDIGO HTML5 COMPLETO, INICIANDO EM <!DOCTYPE html> E TERMINANDO EM </html>.
+2. NUNCA UTILIZE LAYOUTS DE SLIDES OU NAVEGAÇÃO DE APRESENTAÇÃO A MENOS QUE SOLICITADO EXPLICITAMENTE. A PÁGINA DEVE TER ROLAGEM VERTICAL CONTINUA E FLUIDA.
+3. INCLUA DESIGN ULTRA MODERNO COM TAILWIND CSS VIA CDN (https://cdn.tailwindcss.com), FONTES DO GOOGLE FONTS (Plus Jakarta Sans / Inter), ANIMAÇÕES CSS SUAVES, EFETOS GLASSMORPHISM (backdrop-blur), BADGES ANIMADAS NO HERO, CARDS COM HOVER GLOW, BARRA DE PROVA SOCIAL COM NÚMEROS, DEPOIMENTOS E ACCORDION INTERATIVO DE FAQ.
+4. UTILIZE AS ESTRUTURA EM CÓDIGO HTML MEMORIZADAS NO CÉREBRO PARA REPRODUZIR VISUAIS ANIMAÇÕES IDENTICAS E PROFISSIONAIS.
 
-Forneça uma resposta clara, estruturada e diretamente útil contendo sua decisão/resultado.
+Forneça uma resposta limpa, contendo o código HTML completo.
                 `;
 
                 const brainResponse = await ai.models.generateContent({
@@ -365,8 +371,13 @@ Forneça uma resposta clara, estruturada e diretamente útil contendo sua decis�
                   // Mantém texto
                 }
               } catch (aiErr: any) {
+                const errMsg = aiErr.message || '';
+                const isQuota = aiErr.status === 429 || errMsg.includes('429') || errMsg.includes('quota');
+                
+                keyManager.markCurrentKeyAsFailed(isQuota ? 'Limite de Tokens/Cota da Chave Excedido (429)' : `Erro na Chave Gemini: ${errMsg.substring(0, 50)}`);
+                
                 console.warn("[Brain Engine] Erro na requisição Gemini, ativando Sintetizador Autônomo Local:", aiErr);
-                this.addLog(createLog(node.id, label, 'WARN', `⚡ [SINTETIZADOR AUTÔNOMO LOCAL] Falha na API externa. Sintetizando Landing Page com base nos padrões do Cérebro...`));
+                this.addLog(createLog(node.id, label, 'WARN', `⚠️ [SINAL DE TOKENS/COTA] ${isQuota ? 'Tokens da chave esgotados (Quota Exceeded 429).' : 'Falha na API Gemini.'} Ativando Sintetizador Autônomo de Alta Conversão do Cérebro...`));
                 parsedBrainResult = brainService.synthesizeOfflineLandingPage(directive, currentInput);
                 rawBrainText = typeof parsedBrainResult === 'string' ? parsedBrainResult : JSON.stringify(parsedBrainResult);
               }

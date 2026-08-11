@@ -16,6 +16,30 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
   const [copied, setCopied] = useState(false);
   const [learningMessage, setLearningMessage] = useState<string | null>(null);
   const [isLearning, setIsLearning] = useState(false);
+  const [activeFeedbackFileId, setActiveFeedbackFileId] = useState<string | null>(null);
+  const [rating, setRating] = useState<number>(5);
+  const [feedbackInput, setFeedbackInput] = useState<string>('');
+
+  const handleSaveStructureWithFeedback = async (file: GeneratedFile) => {
+    setIsLearning(true);
+    setLearningMessage(`🧠 Salvando estrutura de código e feedback para "${file.name}"...`);
+    
+    const msg = await brainService.saveCodeStructurePattern(
+      file.name, 
+      file.content, 
+      rating, 
+      feedbackInput || 'Estrutura aprovada e memorizada com sucesso.'
+    );
+
+    setLearningMessage(`⭐ ${msg}`);
+    setIsLearning(false);
+    setActiveFeedbackFileId(null);
+    setFeedbackInput('');
+
+    setTimeout(() => {
+      setLearningMessage(null);
+    }, 6000);
+  };
 
   // Helper to extract pure clean HTML and inject auto-playing presentation frame engine
   const getCleanHtmlContent = (content: string): string => {
@@ -47,8 +71,10 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
 
     text = text.trim();
 
-    // Se já for HTML e não contiver o script de apresentação, injeta o player automático de frames
-    if ((text.toLowerCase().includes('<html') || text.toLowerCase().includes('<!doctype') || text.toLowerCase().includes('<section') || text.toLowerCase().includes('<div')) && !text.includes('presentation-frame-styles')) {
+    // Apenas se explicitamente for um arquivo de slides ou apresentação
+    const isSlideshow = text.includes('data-presentation-slides="true"') || text.includes('class="slide-deck"');
+
+    if (isSlideshow && !text.includes('presentation-frame-styles')) {
       const presentationEngine = `
 <style id="presentation-frame-styles">
   html, body {
@@ -58,133 +84,7 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
   .frame-slide-wrapper {
     width: 100vw; height: 100vh; position: relative; overflow: hidden;
   }
-  .frame-slide-wrapper > section,
-  .frame-slide-wrapper > header,
-  .frame-slide-wrapper > footer,
-  .frame-slide-wrapper > main,
-  .frame-slide-wrapper > div {
-    position: absolute !important; inset: 0 !important; width: 100vw !important; height: 100vh !important;
-    box-sizing: border-box !important; opacity: 0 !important; pointer-events: none !important;
-    transform: scale(0.96) translateY(20px) !important;
-    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    overflow-y: auto !important; display: flex !important; flex-direction: column !important; justify-content: center !important;
-  }
-  .frame-slide-wrapper > .active-frame-slide {
-    opacity: 1 !important; pointer-events: auto !important; transform: scale(1) translateY(0) !important; z-index: 10 !important;
-  }
-  #presentation-controls {
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-    z-index: 999999; display: flex; items-center: center; gap: 12px;
-    background: rgba(13, 17, 23, 0.88); backdrop-filter: blur(16px);
-    padding: 8px 18px; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.18);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.7); color: white; font-family: monospace; font-size: 12px;
-  }
-  #presentation-controls button {
-    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
-    color: white; border-radius: 9999px; padding: 6px 14px; font-weight: bold;
-    cursor: pointer; transition: all 0.2s; font-size: 11px;
-  }
-  #presentation-controls button:hover { background: #3b82f6; border-color: #60a5fa; transform: scale(1.05); }
-  .frame-dot {
-    width: 8px; height: 8px; border-radius: 9999px; background: rgba(255,255,255,0.3); transition: all 0.3s;
-  }
-  .frame-dot.active { background: #38bdf8; width: 22px; box-shadow: 0 0 10px #38bdf8; }
-  #frame-progress-bar {
-    position: fixed; top: 0; left: 0; height: 4px; background: linear-gradient(90deg, #3b82f6, #a855f7, #ec4899);
-    z-index: 999999; transition: width 0.1s linear;
-  }
-</style>
-<script id="presentation-frame-script">
-  window.addEventListener('DOMContentLoaded', () => {
-    let body = document.body;
-    let frames = Array.from(body.querySelectorAll('section, header, footer, main, body > div'));
-    if (frames.length <= 1) {
-      frames = Array.from(body.children).filter(el => el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE' && el.id !== 'presentation-controls' && el.id !== 'frame-progress-bar');
-    }
-    if (frames.length === 0) return;
-
-    let wrapper = document.createElement('div');
-    wrapper.className = 'frame-slide-wrapper';
-    frames.forEach(f => wrapper.appendChild(f));
-    body.appendChild(wrapper);
-
-    let progress = document.createElement('div');
-    progress.id = 'frame-progress-bar';
-    body.appendChild(progress);
-
-    let controls = document.createElement('div');
-    controls.id = 'presentation-controls';
-    controls.innerHTML = \`
-      <button id="prev-frame-btn">◀ Ant</button>
-      <button id="pause-frame-btn">⏸ Pausa</button>
-      <div id="frame-dots" style="display:flex; gap:6px; align-items:center;"></div>
-      <button id="next-frame-btn">Próx ▶</button>
-      <span id="frame-counter" style="color:#a855f7; font-weight:bold; margin-left:4px;">1/\${frames.length}</span>
-    \`;
-    body.appendChild(controls);
-
-    let dotsContainer = document.getElementById('frame-dots');
-    frames.forEach((_, idx) => {
-      let dot = document.createElement('div');
-      dot.className = 'frame-dot' + (idx === 0 ? ' active' : '');
-      dotsContainer.appendChild(dot);
-    });
-
-    let current = 0;
-    let isPlaying = true;
-    let intervalTime = 4500;
-    let timer = null;
-    let progressInterval = null;
-    let startTime = Date.now();
-
-    function showFrame(index) {
-      current = (index + frames.length) % frames.length;
-      frames.forEach((f, i) => {
-        if (i === current) f.classList.add('active-frame-slide');
-        else f.classList.remove('active-frame-slide');
-      });
-
-      Array.from(dotsContainer.children).forEach((d, i) => {
-        if (i === current) d.classList.add('active');
-        else d.classList.remove('active');
-      });
-
-      document.getElementById('frame-counter').innerText = (current + 1) + '/' + frames.length;
-      resetTimer();
-    }
-
-    function resetTimer() {
-      clearInterval(timer);
-      clearInterval(progressInterval);
-      progress.style.width = '0%';
-      if (!isPlaying) return;
-
-      startTime = Date.now();
-      progressInterval = setInterval(() => {
-        let elapsed = Date.now() - startTime;
-        let pct = Math.min(100, (elapsed / intervalTime) * 100);
-        progress.style.width = pct + '%';
-      }, 50);
-
-      timer = setInterval(() => {
-        showFrame(current + 1);
-      }, intervalTime);
-    }
-
-    document.getElementById('prev-frame-btn').onclick = () => showFrame(current - 1);
-    document.getElementById('next-frame-btn').onclick = () => showFrame(current + 1);
-
-    let pauseBtn = document.getElementById('pause-frame-btn');
-    pauseBtn.onclick = () => {
-      isPlaying = !isPlaying;
-      pauseBtn.innerText = isPlaying ? '⏸ Pausa' : '▶ Play';
-      resetTimer();
-    };
-
-    showFrame(0);
-  });
-</script>
-`;
+</style>`;
       if (text.includes('</body>')) {
         text = text.replace('</body>', `${presentationEngine}</body>`);
       } else {
@@ -325,7 +225,65 @@ export const FilePanel: React.FC<FilePanelProps> = ({ files, isOpen = true }) =>
                 >
                   🔗 Nova Aba
                 </button>
+
+                <button
+                  onClick={() => setActiveFeedbackFileId(activeFeedbackFileId === file.id ? null : file.id)}
+                  className="bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/70 text-[11px] font-sans font-bold py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1"
+                  title="Avaliar e salvar estrutura de código no Cérebro IA"
+                >
+                  ⭐ Avaliar & Ensinar Cérebro
+                </button>
               </div>
+
+              {/* PAINEL DE FEEDBACK E CAPTURA DE ESTRUTURA DE CÓDIGO DO PROJETO */}
+              {activeFeedbackFileId === file.id && (
+                <div className="bg-purple-950/40 border border-purple-700/60 p-3 rounded-xl space-y-2.5 animate-fade-in font-sans">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-purple-200 flex items-center gap-1">
+                      <span>🧠</span> Avaliar & Capturar Estrutura de Código
+                    </span>
+                    <button 
+                      onClick={() => setActiveFeedbackFileId(null)}
+                      className="text-gray-400 hover:text-white text-xs font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-300 text-[10px] font-semibold">Sua Nota:</span>
+                    <div className="flex gap-1 text-amber-400 text-sm cursor-pointer">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span 
+                          key={star} 
+                          onClick={() => setRating(star)}
+                          className={`transition-transform hover:scale-125 ${star <= rating ? 'opacity-100' : 'opacity-30'}`}
+                        >
+                          ★
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <input
+                    type="text"
+                    value={feedbackInput}
+                    onChange={(e) => setFeedbackInput(e.target.value)}
+                    placeholder="Feedback da estrutura (ex: Adorei o hero animado e as seções glassmorphic)..."
+                    className="w-full bg-gray-900 border border-purple-800/60 rounded-lg p-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 font-sans"
+                  />
+
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => handleSaveStructureWithFeedback(file)}
+                      disabled={isLearning}
+                      className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[11px] font-bold py-1.5 px-3 rounded-lg shadow-md transition-all flex items-center gap-1"
+                    >
+                      <span>💾 Salvar Estrutura de Código no Cérebro</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}

@@ -329,6 +329,43 @@ export const brainService = {
     }
   },
 
+  // SALVAR E APRENDER ESTRUTURA DE CÓDIGO HTML COM FEEDBACK DO USUÁRIO
+  saveCodeStructurePattern: async (
+    fileName: string, 
+    htmlContent: string, 
+    rating: number = 5, 
+    feedback?: string
+  ): Promise<string> => {
+    try {
+      const cleanHtml = htmlContent.trim();
+      const hasTailwind = cleanHtml.includes('tailwindcss') || cleanHtml.includes('cdn.tailwindcss.com');
+      const hasHero = /hero|banner|welcome|header/i.test(cleanHtml);
+      const hasGlass = /backdrop-blur|glassmorphism|bg-white\/10|bg-black\/40/i.test(cleanHtml);
+      const hasAnim = /animate-|transition-|hover:/i.test(cleanHtml);
+
+      // Extrai trecho estrutural representativo
+      const structuralSnippet = cleanHtml.substring(0, 1500).replace(/\s+/g, ' ');
+
+      const patternMemory = `[ESTRUTURA DE CÓDIGO APROVADA - "${fileName}"] 
+Nota: ${rating}/5★ ${feedback ? `| Feedback: "${feedback}"` : ''}
+Atributos Técnicos: ${hasHero ? 'Hero Section' : 'Layout Custom'} | ${hasGlass ? 'Efeitos Glassmorphism' : 'Clean UI'} | ${hasAnim ? 'Animações CSS/Tailwind' : 'Estático'} | ${hasTailwind ? 'Tailwind CSS' : 'Custom CSS'}
+Blueprint Estrutural: ${structuralSnippet}`;
+
+      // Grava no banco de memórias do Cérebro
+      brainService.addMemory(
+        patternMemory,
+        'pattern',
+        'high',
+        'user'
+      );
+
+      return `Estrutura de código HTML de "${fileName}" e feedback (${rating}/5★) gravados no Cérebro IA com sucesso!`;
+    } catch (e: any) {
+      console.error("Erro ao salvar estrutura no Cérebro:", e);
+      return `Erro ao salvar estrutura: ${e.message}`;
+    }
+  },
+
   learnFromLandingPage: async (fileName: string, htmlContent: string): Promise<string> => {
     try {
       // 1. Analisa a estrutura do HTML diretamente por regex/parsing

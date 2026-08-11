@@ -16,6 +16,7 @@ class KeyManager {
   private currentIndex: number = 0;
   private failedKeys: Set<string> = new Set();
   private listeners: KeyListener[] = [];
+  private lastWarning: string | null = null;
 
   constructor() {
     this.loadKeys();
@@ -114,13 +115,16 @@ class KeyManager {
     return this.keys[this.currentIndex] || '';
   }
 
-  public markCurrentKeyAsFailed(): boolean {
+  public markCurrentKeyAsFailed(reason?: string): boolean {
     if (this.keys.length === 0) return false;
     
     const keyToMark = this.keys[this.currentIndex];
     this.failedKeys.add(keyToMark);
     
-    console.error(`[KeyManager] Chave #${this.currentIndex + 1} falhou.`);
+    const warningMsg = reason || `Cota/Tokens da Chave #${this.currentIndex + 1} esgotados. Roteando para a próxima chave (${this.failedKeys.size}/${this.keys.length} esgotadas)...`;
+    this.lastWarning = warningMsg;
+
+    console.warn(`[KeyManager] Chave #${this.currentIndex + 1} falhou/esgotou cota: ${warningMsg}`);
     
     // Avança para a próxima
     this.currentIndex = (this.currentIndex + 1) % this.keys.length;
@@ -128,6 +132,14 @@ class KeyManager {
     
     // Retorna true se ainda houver chaves não testadas ou que não falharam
     return this.failedKeys.size < this.keys.length;
+  }
+
+  public getLastWarning(): string | null {
+    return this.lastWarning;
+  }
+
+  public clearWarning() {
+    this.lastWarning = null;
   }
 
   public getStatus() {

@@ -24,6 +24,7 @@ import NodeConfigPanel from './components/NodeConfigPanel';
 import KeyStatusPanel from './components/KeyStatusPanel';
 import LandingPage from './components/LandingPage';
 import { BrainModal } from './components/BrainModal';
+import { CreditsCard } from './components/CreditsCard';
 import { FlowDependencyGraph } from './components/FlowDependencyGraph';
 import { INITIAL_NODES, INITIAL_EDGES, APP_NAME } from './constants';
 import { FlowEngine } from './services/flowEngine';
@@ -90,6 +91,7 @@ const App = () => {
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false); 
   const [isBrainModalOpen, setIsBrainModalOpen] = useState(false);
+  const [showCreditsCard, setShowCreditsCard] = useState(false);
   const [showLandingPage, setShowLandingPage] = useState(true);
 
   // PWA INSTALL STATE
@@ -353,6 +355,20 @@ const App = () => {
                 <span className="text-xs animate-pulse">🧠</span>
                 <span className="hidden xs:inline font-mono uppercase tracking-tight">Cérebro</span>
              </button>
+
+             {/* BOTÃO CRÉDITOS DO SISTEMA */}
+             <button 
+                onClick={() => setShowCreditsCard(!showCreditsCard)}
+                className={`flex items-center gap-1 px-2 sm:px-2.5 h-8 rounded-lg transition-all border shadow-md active:scale-95 font-bold text-[10px] sm:text-xs shrink-0 ${
+                  showCreditsCard 
+                    ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white border-pink-400' 
+                    : 'bg-gray-900/90 hover:bg-gray-800 text-purple-300 border-purple-800/60'
+                }`}
+                title="Ver Créditos e Criadores do Sistema"
+             >
+                <span className="text-xs">✨</span>
+                <span className="hidden md:inline font-mono uppercase tracking-tight">Créditos</span>
+             </button>
              
              {/* DOCK DE FERRAMENTAS (JSON / SAVE / SETTINGS) */}
              <div className="flex items-center bg-gray-900/90 border border-gray-800 p-0.5 rounded-lg gap-0.5 shrink-0">
@@ -582,6 +598,9 @@ const App = () => {
              <span className="text-[9px] font-black uppercase tracking-tighter">Menu</span>
           </button>
         </nav>
+
+        {/* CARD FLUTUANTE DE CRÉDITOS DO SISTEMA (@layon.dev & @davi._link) */}
+        <CreditsCard floating isOpen={showCreditsCard} onClose={() => setShowCreditsCard(false)} />
 
         <NodeConfigPanel node={selectedNode} isOpen={!!selectedNode} onClose={() => setSelectedNodeId(null)} onUpdate={(id, cfg) => setNodes(nds => nds.map(n => n.id === id ? {...n, data: {...n.data, config: cfg}} : n))} onDelete={id => setNodes(nds => nds.filter(n => n.id !== id))} onDuplicate={() => {}} />
         <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onInstallPWA={handleInstallPWA} />

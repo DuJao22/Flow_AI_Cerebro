@@ -1,5 +1,6 @@
 import React from 'react';
 import { Flower2, Zap, BrainCircuit, Rocket, ArrowRight, Code2 } from 'lucide-react';
+import { CreditsCard } from './CreditsCard';
 
 interface LandingPageProps {
   onStart: () => void;
@@ -48,7 +49,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
         </div>
 
         {/* Features Grid */}
-        <div className="max-w-7xl mx-auto mt-32 grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="max-w-7xl mx-auto mt-24 grid grid-cols-1 md:grid-cols-3 gap-8">
           <FeatureCard 
             icon={<BrainCircuit className="w-6 h-6 text-purple-400" />}
             title="Geração por IA"
@@ -65,15 +66,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             description="Gere arquivos, salve resultados em JSON ou faça chamadas diretas para seus webhooks e servidores de produção com facilidade."
           />
         </div>
+
+        {/* CARD DE CRÉDITOS NA LANDING PAGE */}
+        <div className="max-w-xl mx-auto mt-20">
+          <CreditsCard isOpen={true} floating={false} />
+        </div>
       </main>
       
       {/* Footer */}
-      <footer className="border-t border-gray-800 mt-20 py-8 text-center text-gray-500 text-sm">
+      <footer className="border-t border-gray-800 mt-12 py-8 text-center text-gray-500 text-sm">
         <div className="flex items-center justify-center gap-2 mb-2">
           <Flower2 className="w-4 h-4 text-purple-500" />
           <span className="font-semibold text-gray-300">Flow Architect AI</span>
         </div>
-        <p>© {new Date().getFullYear()} - Criado por João Layon. Todos os direitos reservados.</p>
+        <p>© {new Date().getFullYear()} - Desenvolvido por <a href="https://instagram.com/layon.dev" target="_blank" rel="noopener noreferrer" className="text-purple-400 font-bold hover:underline">@layon.dev</a> & <a href="https://instagram.com/davi._link" target="_blank" rel="noopener noreferrer" className="text-indigo-400 font-bold hover:underline">@davi._link</a>. Todos os direitos reservados.</p>
       </footer>
     </div>
   );
