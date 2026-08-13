@@ -5,6 +5,7 @@ import { MY_API_KEYS } from '../api_keys_list';
  */
 
 type KeyListener = (status: string) => void;
+type KeyWarningListener = (warning: string, isQuota: boolean) => void;
 
 const sanitizeKey = (k: string): string => {
   if (!k) return '';
@@ -16,6 +17,7 @@ class KeyManager {
   private currentIndex: number = 0;
   private failedKeys: Set<string> = new Set();
   private listeners: KeyListener[] = [];
+  private warningListeners: KeyWarningListener[] = [];
   private lastWarning: string | null = null;
 
   constructor() {
@@ -98,6 +100,19 @@ class KeyManager {
     };
   }
 
+  public onWarning(listener: KeyWarningListener) {
+    this.warningListeners.push(listener);
+    return () => {
+      this.warningListeners = this.warningListeners.filter(l => l !== listener);
+    };
+  }
+
+  public triggerWarning(warningMsg: string, isQuota: boolean = true) {
+    this.lastWarning = warningMsg;
+    this.warningListeners.forEach(l => l(warningMsg, isQuota));
+    this.notify();
+  }
+
   private notify() {
     this.listeners.forEach(l => l(this.getStatus()));
   }
@@ -121,8 +136,10 @@ class KeyManager {
     const keyToMark = this.keys[this.currentIndex];
     this.failedKeys.add(keyToMark);
     
-    const warningMsg = reason || `Cota/Tokens da Chave #${this.currentIndex + 1} esgotados. Roteando para a próxima chave (${this.failedKeys.size}/${this.keys.length} esgotadas)...`;
-    this.lastWarning = warningMsg;
+    const isQuota = !reason || reason.includes('429') || reason.toLowerCase().includes('cota') || reason.toLowerCase().includes('token');
+    const warningMsg = reason || `⚠️ Limite de Tokens/Cota da Chave #${this.currentIndex + 1} Excedido (429). Alternando para a próxima chave (${this.failedKeys.size}/${this.keys.length} esgotadas)...`;
+    
+    this.triggerWarning(warningMsg, isQuota);
 
     console.warn(`[KeyManager] Chave #${this.currentIndex + 1} falhou/esgotou cota: ${warningMsg}`);
     

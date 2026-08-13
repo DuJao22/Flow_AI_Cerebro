@@ -124,8 +124,12 @@ export const generateFlowFromPrompt = async (userPrompt: string, context?: FlowC
         lastError = errorMsg;
 
         if (isForbidden || isQuota || isLeaked) {
-            // Marca chave como falha e passa para a próxima chave
-            keyManager.markCurrentKeyAsFailed();
+            const reason = isQuota 
+              ? `⚠️ Limite de Tokens/Cota Excedido na Chave #${keyManager.getCurrentIndex() + 1} (Erro 429). Alternando para a próxima chave...`
+              : isLeaked 
+                ? `🚨 Chave #${keyManager.getCurrentIndex() + 1} bloqueada por vazamento de segurança.`
+                : `❌ Chave #${keyManager.getCurrentIndex() + 1} inválida ou restrita (Erro 403).`;
+            keyManager.markCurrentKeyAsFailed(reason);
             break; // Sai do loop de modelos e tenta a próxima chave
         }
       }

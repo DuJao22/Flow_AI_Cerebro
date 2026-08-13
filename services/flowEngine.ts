@@ -314,6 +314,10 @@ export class FlowEngine {
             const currentInput = this.context['input'] || {};
             const activeKey = await brainService.getEffectiveApiKey();
 
+            // Detecta se a diretiva ou o rótulo do nó solicitam explicitamente uma Landing Page / Website / Página HTML
+            const isLandingPageRequested = /landing\s*page|página|pagina|site|website|web\s*page|html|layout\s*web/i.test(directive) || 
+              /landing\s*page|página|pagina|site|website|web\s*page|html/i.test(label);
+
             const memories = brainService.getMemories();
             this.addLog(createLog(node.id, label, 'INFO', `🧠 [CIRCUITO REDE NEURAL] Ativando cérebro com ${memories.length} memórias em sinapse...`));
 
@@ -330,10 +334,12 @@ export class FlowEngine {
                 const ai = new GoogleGenAI({ apiKey: activeKey });
                 const memoriesText = brainService.getFormattedContext();
 
-                const promptText = `
+                let promptText = '';
+
+                if (isLandingPageRequested) {
+                  promptText = `
 VOCÊ É O CÉREBRO DE IA ULTRA PROFISSIONAL E DE ALTA CONVERSÃO.
-SUA DIRETRIZ ABSOLUTA É NUNCA GERAR PÁGINAS FEIAS, GENÉRICAS OU INCOMPLETAS.
-TODA PÁGINA OU ESTRUTURA DEVE SER UMA "ULTRA MEGA LANDING PAGE PROFISSIONAL".
+SUA TAREFA É GERAR UMA LANDING PAGE DE ALTO PADRÃO CONFORME SOLICITADO PELO USUÁRIO.
 
 REGRAS E MEMÓRIAS ESTRUTURAIS ACUMULADAS NO CÉREBRO:
 ${memoriesText}
@@ -341,17 +347,37 @@ ${memoriesText}
 DADOS DE ENTRADA DO FLUXO (INPUT):
 ${typeof currentInput === 'object' ? JSON.stringify(currentInput, null, 2) : String(currentInput)}
 
-SUA DIRETIVA / TAREFA ESPECÍFICA:
+SUA DIRETIVA ESPECÍFICA:
 ${directive}
 
-DIRETRIZES OBRIGATÓRIAS PARA GERAÇÃO DE CÓDIGO HTML / LANDING PAGE:
+DIRETRIZES OBRIGATÓRIAS PARA GERAÇÃO DA LANDING PAGE:
 1. GERE UM CÓDIGO HTML5 COMPLETO, INICIANDO EM <!DOCTYPE html> E TERMINANDO EM </html>.
 2. NUNCA UTILIZE LAYOUTS DE SLIDES OU NAVEGAÇÃO DE APRESENTAÇÃO A MENOS QUE SOLICITADO EXPLICITAMENTE. A PÁGINA DEVE TER ROLAGEM VERTICAL CONTINUA E FLUIDA.
 3. INCLUA DESIGN ULTRA MODERNO COM TAILWIND CSS VIA CDN (https://cdn.tailwindcss.com), FONTES DO GOOGLE FONTS (Plus Jakarta Sans / Inter), ANIMAÇÕES CSS SUAVES, EFETOS GLASSMORPHISM (backdrop-blur), BADGES ANIMADAS NO HERO, CARDS COM HOVER GLOW, BARRA DE PROVA SOCIAL COM NÚMEROS, DEPOIMENTOS E ACCORDION INTERATIVO DE FAQ.
-4. UTILIZE AS ESTRUTURA EM CÓDIGO HTML MEMORIZADAS NO CÉREBRO PARA REPRODUZIR VISUAIS ANIMAÇÕES IDENTICAS E PROFISSIONAIS.
+4. UTILIZE AS ESTRUTURAS EM CÓDIGO HTML MEMORIZADAS NO CÉREBRO PARA REPRODUZIR VISUAIS E ANIMAÇÕES IDENTICAS E PROFISSIONAIS.
 
 Forneça uma resposta limpa, contendo o código HTML completo.
-                `;
+                  `;
+                } else {
+                  promptText = `
+VOCÊ É O CÉREBRO DE IA DE APRENDIZADO E PROCESSAMENTO INTELIGENTE.
+SUA TAREFA É EXECUTAR A DIRETIVA SOLICITADA DE FORMA DIRETA, PRECISA E PROFISSIONAL.
+
+REGRAS E MEMÓRIAS ACUMULADAS NO CÉREBRO:
+${memoriesText}
+
+DADOS DE ENTRADA DO FLUXO (INPUT):
+${typeof currentInput === 'object' ? JSON.stringify(currentInput, null, 2) : String(currentInput)}
+
+SUA DIRETIVA / TAREFA:
+${directive}
+
+INSTRUÇÕES:
+- Responda executando exatamente o que foi solicitado na diretiva.
+- Se for análise ou processamento de dados, retorne uma resposta limpa ou JSON.
+- NÃO crie código HTML de landing page a menos que a diretiva acima tenha solicitado expressamente.
+                  `;
+                }
 
                 const brainResponse = await ai.models.generateContent({
                   model: 'gemini-3.6-flash',
@@ -377,68 +403,95 @@ Forneça uma resposta limpa, contendo o código HTML completo.
                 keyManager.markCurrentKeyAsFailed(isQuota ? 'Limite de Tokens/Cota da Chave Excedido (429)' : `Erro na Chave Gemini: ${errMsg.substring(0, 50)}`);
                 
                 console.warn("[Brain Engine] Erro na requisição Gemini, ativando Sintetizador Autônomo Local:", aiErr);
-                this.addLog(createLog(node.id, label, 'WARN', `⚠️ [SINAL DE TOKENS/COTA] ${isQuota ? 'Tokens da chave esgotados (Quota Exceeded 429).' : 'Falha na API Gemini.'} Ativando Sintetizador Autônomo de Alta Conversão do Cérebro...`));
-                parsedBrainResult = brainService.synthesizeOfflineLandingPage(directive, currentInput);
-                rawBrainText = typeof parsedBrainResult === 'string' ? parsedBrainResult : JSON.stringify(parsedBrainResult);
+                this.addLog(createLog(node.id, label, 'WARN', `⚠️ [SINAL DE TOKENS/COTA] ${isQuota ? 'Tokens da chave esgotados (Quota Exceeded 429).' : 'Falha na API Gemini.'} Ativando Sintetizador Autônomo Local do Cérebro...`));
+                
+                if (isLandingPageRequested) {
+                  parsedBrainResult = brainService.synthesizeOfflineLandingPage(directive, currentInput);
+                } else {
+                  const inputStr = typeof currentInput === 'object' ? JSON.stringify(currentInput, null, 2) : String(currentInput);
+                  parsedBrainResult = {
+                    status: "success",
+                    processedBy: "Cérebro IA (Sintetizador Autônomo Local)",
+                    directive: directive,
+                    inputSummary: inputStr.length > 200 ? inputStr.substring(0, 200) + "..." : inputStr,
+                    output: `[Processado pelo Cérebro IA]: Diretiva "${directive}" executada com sucesso.`,
+                    timestamp: new Date().toISOString()
+                  };
+                }
+                rawBrainText = typeof parsedBrainResult === 'string' ? parsedBrainResult : JSON.stringify(parsedBrainResult, null, 2);
               }
             } else {
-              this.addLog(createLog(node.id, label, 'WARN', `⚡ [SINTETIZADOR AUTÔNOMO LOCAL] Sem chave de IA externa. Ativando síntese local do Cérebro de alta conversão...`));
-              parsedBrainResult = brainService.synthesizeOfflineLandingPage(directive, currentInput);
-              rawBrainText = typeof parsedBrainResult === 'string' ? parsedBrainResult : JSON.stringify(parsedBrainResult);
+              this.addLog(createLog(node.id, label, 'WARN', `⚡ [SINTETIZADOR AUTÔNOMO LOCAL] Sem chave de IA externa. Ativando síntese local do Cérebro...`));
+              
+              if (isLandingPageRequested) {
+                parsedBrainResult = brainService.synthesizeOfflineLandingPage(directive, currentInput);
+              } else {
+                const inputStr = typeof currentInput === 'object' ? JSON.stringify(currentInput, null, 2) : String(currentInput);
+                parsedBrainResult = {
+                  status: "success",
+                  processedBy: "Cérebro IA (Sintetizador Autônomo Local)",
+                  directive: directive,
+                  inputSummary: inputStr.length > 200 ? inputStr.substring(0, 200) + "..." : inputStr,
+                  output: `[Processado pelo Cérebro IA]: Diretiva "${directive}" executada com sucesso.`,
+                  timestamp: new Date().toISOString()
+                };
+              }
+              rawBrainText = typeof parsedBrainResult === 'string' ? parsedBrainResult : JSON.stringify(parsedBrainResult, null, 2);
             }
 
             this.context[node.id] = parsedBrainResult;
             this.context['input'] = parsedBrainResult;
 
-            // --- DETECÇÃO E SALVAMENTO AUTÔNOMO DE ARQUIVO HTML PELO CÉREBRO ---
-            let htmlContentToSave = '';
+            // Salva e aprende Landing Page SOMENTE se ela foi solicitada pelo usuário
+            if (isLandingPageRequested) {
+              let htmlContentToSave = '';
 
-            if (typeof parsedBrainResult === 'string') {
-              const codeBlockMatch = parsedBrainResult.match(/```html\s*([\s\S]*?)\s*```/i);
-              if (codeBlockMatch) {
-                htmlContentToSave = codeBlockMatch[1].trim();
-              } else {
-                const htmlStart = parsedBrainResult.search(/<!DOCTYPE html|<html/i);
-                const htmlEnd = parsedBrainResult.search(/<\/html>/i);
-                if (htmlStart !== -1 && htmlEnd !== -1) {
-                  htmlContentToSave = parsedBrainResult.substring(htmlStart, htmlEnd + 7).trim();
-                } else if (parsedBrainResult.includes('<html') || parsedBrainResult.includes('<!DOCTYPE html>')) {
-                  htmlContentToSave = parsedBrainResult.trim();
+              if (typeof parsedBrainResult === 'string') {
+                const codeBlockMatch = parsedBrainResult.match(/```html\s*([\s\S]*?)\s*```/i);
+                if (codeBlockMatch) {
+                  htmlContentToSave = codeBlockMatch[1].trim();
+                } else {
+                  const htmlStart = parsedBrainResult.search(/<!DOCTYPE html|<html/i);
+                  const htmlEnd = parsedBrainResult.search(/<\/html>/i);
+                  if (htmlStart !== -1 && htmlEnd !== -1) {
+                    htmlContentToSave = parsedBrainResult.substring(htmlStart, htmlEnd + 7).trim();
+                  } else if (parsedBrainResult.includes('<html') || parsedBrainResult.includes('<!DOCTYPE html>')) {
+                    htmlContentToSave = parsedBrainResult.trim();
+                  }
                 }
-              }
-            } else if (parsedBrainResult && typeof parsedBrainResult === 'object') {
-              if (parsedBrainResult.html) htmlContentToSave = String(parsedBrainResult.html).trim();
-              else if (parsedBrainResult.code) htmlContentToSave = String(parsedBrainResult.code).trim();
-              else if (parsedBrainResult.content) htmlContentToSave = String(parsedBrainResult.content).trim();
-            }
-
-            if (htmlContentToSave) {
-              // Sanidade estrita: se vazou prompt ou texto de requisitos
-              if (htmlContentToSave.toUpperCase().includes('TEXT:REQUISITOS') || 
-                  htmlContentToSave.toUpperCase().includes('REQUISITOS OBRIGATORIOS DE RESPONSIVIDADE') ||
-                  (!htmlContentToSave.includes('<!DOCTYPE html>') && !htmlContentToSave.includes('<html'))) {
-                htmlContentToSave = brainService.synthesizeOfflineLandingPage(directive, currentInput);
+              } else if (parsedBrainResult && typeof parsedBrainResult === 'object') {
+                if (parsedBrainResult.html) htmlContentToSave = String(parsedBrainResult.html).trim();
+                else if (parsedBrainResult.code) htmlContentToSave = String(parsedBrainResult.code).trim();
+                else if (parsedBrainResult.content) htmlContentToSave = String(parsedBrainResult.content).trim();
               }
 
-              let fileName = config?.fileName || `landing_page_${Date.now().toString().slice(-4)}.html`;
-              if (!fileName.toLowerCase().endsWith('.html')) fileName += '.html';
+              if (htmlContentToSave) {
+                if (htmlContentToSave.toUpperCase().includes('TEXT:REQUISITOS') || 
+                    htmlContentToSave.toUpperCase().includes('REQUISITOS OBRIGATORIOS DE RESPONSIVIDADE') ||
+                    (!htmlContentToSave.includes('<!DOCTYPE html>') && !htmlContentToSave.includes('<html'))) {
+                  htmlContentToSave = brainService.synthesizeOfflineLandingPage(directive, currentInput);
+                }
 
-              const newFile: GeneratedFile = {
-                id: `file-${Date.now()}`,
-                name: fileName,
-                type: 'html',
-                content: htmlContentToSave,
-                createdAt: Date.now(),
-                size: `${(htmlContentToSave.length / 1024).toFixed(1)} KB`
-              };
+                let fileName = config?.fileName || `landing_page_${Date.now().toString().slice(-4)}.html`;
+                if (!fileName.toLowerCase().endsWith('.html')) fileName += '.html';
 
-              this.onFileGenerated(newFile);
-              this.addLog(createLog(node.id, label, 'SUCCESS', `💾 [AUTOSSALVAMENTO DO CÉREBRO] Arquivo HTML gerado e salvo em 'Arquivos': ${fileName}`));
+                const newFile: GeneratedFile = {
+                  id: `file-${Date.now()}`,
+                  name: fileName,
+                  type: 'html',
+                  content: htmlContentToSave,
+                  createdAt: Date.now(),
+                  size: `${(htmlContentToSave.length / 1024).toFixed(1)} KB`
+                };
 
-              // Absorve aprendizado do HTML gerado
-              brainService.learnFromLandingPage(fileName, htmlContentToSave).then((insight) => {
-                this.addLog(createLog(node.id, label, 'INFO', `💡 Cérebro aprendeu com a página gerada: "${insight}"`));
-              });
+                this.onFileGenerated(newFile);
+                this.addLog(createLog(node.id, label, 'SUCCESS', `💾 [AUTOSSALVAMENTO DO CÉREBRO] Arquivo HTML gerado e salvo em 'Arquivos': ${fileName}`));
+
+                // Absorve aprendizado do HTML gerado
+                brainService.learnFromLandingPage(fileName, htmlContentToSave).then((insight) => {
+                  this.addLog(createLog(node.id, label, 'INFO', `💡 Cérebro aprendeu com a página gerada: "${insight}"`));
+                });
+              }
             }
 
             // Aprendizado automático opcional

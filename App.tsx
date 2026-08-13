@@ -25,6 +25,7 @@ import KeyStatusPanel from './components/KeyStatusPanel';
 import LandingPage from './components/LandingPage';
 import { BrainModal } from './components/BrainModal';
 import { CreditsCard } from './components/CreditsCard';
+import { QuotaWarningToast } from './components/QuotaWarningToast';
 import { FlowDependencyGraph } from './components/FlowDependencyGraph';
 import { INITIAL_NODES, INITIAL_EDGES, APP_NAME } from './constants';
 import { FlowEngine } from './services/flowEngine';
@@ -598,6 +599,9 @@ const App = () => {
              <span className="text-[9px] font-black uppercase tracking-tighter">Menu</span>
           </button>
         </nav>
+
+        {/* TOAST ALERTA DE TOKENS / COTA EXCEDIDA (429) */}
+        <QuotaWarningToast onOpenSettings={() => setIsSettingsOpen(true)} />
 
         {/* CARD FLUTUANTE DE CRÉDITOS DO SISTEMA (@layon.dev & @davi._link) */}
         <CreditsCard floating isOpen={showCreditsCard} onClose={() => setShowCreditsCard(false)} />
